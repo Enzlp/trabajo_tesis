@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% load static %}
+
+{% block content %}
+<section class="hero is-fullheight">
+  <div class="hero-body">
+    <div class="container">
+      <div class="columns has-background-light box" style="height: 60vh;  margin: 0 auto;">
+              
+      <div class="column is-three-fifths is-flex is-justify-content-center is-align-items-center" style="height: 100%;">
+        <img src="{% static 'media/ai_login.svg' %}" style="width: 70%;">
+      </div>
+
+        <div class="column box is-flex is-justify-content-center is-align-items-center">
+          <div class="p-6" style="width: 100%;">
+            <div class="has-text-centered my-4">
+              <h1 class="is-size-3 has-text-weight-bold">¡Bienvenido de vuelta!</h1>
+              <p class="is-size-6">Ingresa tus datos para iniciar sesión</p>
+            </div>
+            <input class="input my-2" type="text" placeholder="Email" />
+            <input class="input my-2" type="password" placeholder="Contraseña" />
+            <div class="is-flex is-justify-content-center mt-6">
+              <button class="button is-primary has-text-white is-size-5 is-fullwidth">
+                Iniciar Sesión
+              </button>
+            </div>
+            <div class="has-text-right mt-4">
+              <p class="is-size-6">
+                No tienes cuenta?
+                <a href="#" class="has-text-weight-bold has-text-link"> Registrate</a>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
