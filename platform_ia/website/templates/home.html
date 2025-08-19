@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 {% block content %}
-{% include 'navbar.html' %}
+{% include 'components/navbar.html' %}
 
 <div class="columns is-centered is-vcentered" style="height: 70vh;">
   <div class="column is-two-fifths">
@@ -18,7 +18,6 @@
         <div class="dropdown-content">
           <a class="dropdown-item is-active" data-val="0">Búsqueda</a>
           <a class="dropdown-item" data-val="1">Recomendación</a>
-          <a class="dropdown-item" data-val="2">Recomendación personalizada</a>
         </div>
       </div>
     </div>
@@ -34,7 +33,6 @@
       </p>
     </div>
     <!-- Seccion de Recomendación-->
-    <!-- Seccion de Recomendacion personalizada -->
   </div>
 </div>
 

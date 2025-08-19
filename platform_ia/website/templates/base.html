@@ -8,8 +8,8 @@
     <link rel="stylesheet" href="{% static 'bulma.css' %}">
     <link rel="icon" type="image/png" href="{% static 'media/platform_logo_v2.svg' %}">
   </head>
-  <body>
-    <div class="container is-fluid p-4 px-5">
+  <body class="{% block body_class %}has-background-white{% endblock %}">
+    <div class="container is-fluid p-4 px-0 ">
       {% block content %}
       {% endblock%}
     </div>
