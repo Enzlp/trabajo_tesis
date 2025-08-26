@@ -60,7 +60,7 @@ CREATE TABLE institutions (
     homepage_url TEXT,
     image_url TEXT,
     image_thumbnail_url TEXT,
-    display_name_acroynyms TEXT,
+    display_name_acronyms TEXT,
     display_name_alternatives TEXT,
     works_count INTEGER,
     cited_by_count INTEGER,
