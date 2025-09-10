@@ -1,12 +1,9 @@
-# Descarga de una muestra de OpenAlex para desarrollo, aprox 40000 autores latinoamericanos con sus entidades relacionadas
+# Descarga una muestra de OpenAlex para desarrollo, aprox 40000 autores latinoamericanos con sus entidades relacionadas
 # usando libreria PyAlex (el sample usa sudamerica y no latinoamerica)
 
 from pyalex import Authors, Works, Institutions, Sources, Topics, Publishers, Funders, Subfields
+import json
 
-# funcion para subir autor a base de datos
-def upload_data(id):
-    author = Authors().filter(id=id).get()
-    pass
 
 # Codigos paises latinoamericanos
 latam_countries = ['AR', 'BO', 'BR', 'CL', 'CO', 'CR', 'CU', 'DO', 'EC', 'SV', 'GT', 'HN', 'MX',
