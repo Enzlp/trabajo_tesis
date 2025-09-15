@@ -88,11 +88,30 @@ n_authors = len(author_index)
 sparse_matrix = coo_matrix((data, (rows, cols)), shape=(n_authors, n_authors))
 sparse_csr = sparse_matrix.tocsr()
 
-print(f"Número de autores en la matriz (target + niveles 1 y 2): {n_authors}")
-print(f"Matriz dispersa creada con forma: {sparse_matrix.shape}")
-
 # --- Creamos matriz de similtud ---
 # Encontramos los vecinos mas similares al autor
+
+# Función para verificar si un autor está en LATAM
+latam_countries = ['AR', 'BO', 'BR', 'CL', 'CO', 'CR', 'CU', 'DO', 'EC', 
+                   'SV', 'GT', 'HN', 'MX', 'NI', 'PA', 'PY', 'PE', 'PR', 
+                   'UY', 'VE']
+
+# Caché de autores LATAM
+latam_cache = {}
+
+def is_latam(author_id):
+    if author_id in latam_cache:
+        return latam_cache[author_id]
+    author_data = Authors()[author_id]
+    result = False
+    if 'last_known_institutions' in author_data:
+        for institution in author_data['last_known_institutions']:
+            country_code = institution.get('country_code')
+            if country_code and country_code in latam_countries:
+                result = True
+                break
+    latam_cache[author_id] = result
+    return result
 
 target_idx = author_index[target_author]
 target_vector = sparse_csr[target_idx]
@@ -101,34 +120,35 @@ target_vector = sparse_csr[target_idx]
 similarities = cosine_similarity(target_vector, sparse_csr)[0]
 similarities[target_idx] = -1  # excluir el propio target
 
-# Obtener índices de los top autores
-top_indices = np.argsort(similarities)[::-1][:10] # marca la cantidad de autores similares
-top_scores = similarities[top_indices]
+# Ordenar todos los autores por similitud descendente
+sorted_indices = np.argsort(similarities)[::-1]
 
 # Mapear índices a IDs de OpenAlex
 inv_author_index = {v: k for k, v in author_index.items()}
-top_authors = [inv_author_index[i] for i in top_indices]
+
+# Seleccionar top 10 autores LATAM
+top_authors = []
+top_scores = []
+
+for idx in sorted_indices:
+    author_id = inv_author_index[idx]
+    if is_latam(author_id):
+        top_authors.append(author_id)
+        top_scores.append(similarities[idx])
+    if len(top_authors) >= 10:
+        break
 
 # Resultado final: lista de tuplas (author_id, score)
 top_similar_authors = list(zip(top_authors, top_scores))
 
+
 # ---- Generar recomendaciones ----
 
-latam_countries = ['AR', 'BO', 'BR', 'CL', 'CO', 'CR', 'CU', 'DO', 'EC', 'SV', 'GT', 'HN', 'MX', 'NI', 'PA', 'PY', 'PE', 'PR', 'UY', 'VE']
 
 # Función de score
 def score(weight, sim):
     return weight * sim
 
-# Función para verificar si un autor está en LATAM
-def is_latam(author_id):
-    author_data = Authors()[author_id]
-    if 'last_known_institutions' in author_data:
-        for institution in author_data['last_known_institutions']:
-            country_code = institution.get('country_code')
-            if country_code and country_code in latam_countries:
-                return True
-    return False
 
 recommended_authors = {}  # autor_id -> score acumulado
 
@@ -142,7 +162,11 @@ for neighbor_author, sim in top_similar_authors:
             author_id = auth["author"]["id"].split("/")[-1]
             
             # Ignorar target y vecinos directos
-            if author_id == target_author or author_id == neighbor_author:
+            if author_id == target_author:
+                continue
+
+            # Ignorar si son contactos directos
+            if author_id in level1_authors:
                 continue
             
             # Filtrar autores LATAM
