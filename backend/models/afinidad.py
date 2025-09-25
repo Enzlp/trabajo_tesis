@@ -1,13 +1,10 @@
 
-# =========================================================
-# Modelo de recomendaciones de investigadores afines en IA
-# =========================================================
+# ==============================================================================
+# Modelo de recomendaciones de investigadores afines en IA (basado en contenido)
+# ==============================================================================
 
 from pyalex import Authors, Subfields
 import numpy as np
-
-# Obtencion de datos por API
-
 
 # Códigos de paises de LATAM
 latam_countries = ['AR', 'BO', 'BR', 'CL', 'CO', 'CR', 'CU', 'DO', 'EC', 'SV', 'GT', 'HN', 'MX', 'NI', 'PA', 'PY', 'PE', 'PR', 'UY', 'VE']
