@@ -1,14 +1,10 @@
 # ==============================================================================================
-# Modelo basado en contenido para encontrar investigadores complementarios (interdisciplinarios)
+# Calculo de la matriz de coocurrencia entre topicos
 # ==============================================================================================
 
 from pyalex import Authors, Subfields, Works, Topics
 import numpy as np
 import pandas as pd
-
-# Códigos de paises de LATAM
-latam_countries = ['AR', 'BO', 'BR', 'CL', 'CO', 'CR', 'CU', 'DO', 'EC', 'SV', 'GT', 'HN', 'MX', 'NI', 'PA', 'PY', 'PE', 'PR', 'UY', 'VE']
-latam_countries_str = "|".join(latam_countries)
 
 # Topicos de IA
 topics_ia = [t['id'].split('/')[-1] for t in Subfields().filter(id=1702).get(per_page=200)[0]['topics']]
@@ -22,31 +18,30 @@ for page in topics_paginated:
 		if id not in topics_ia:
 			topics_total.append(id)
 
-
+# Usaremos un valor menor de matriz para que no tome años el calculo
+min_len = topics_total[:50]
 
 # Matriz de coocurrencias: Calculamos la matriz de coocurrencias para usarla despues
+print("Calculando matriz")
 n = len(topics_ia)
-m = len(topics_total)
+#m = len(topics_total)
+m = len(min_len)
 cooc_matrix = np.zeros((n, m))
 
 for i, t_ia in enumerate(topics_ia):
-    for j, t_total in enumerate(topics_total):
+    for j, t_total in enumerate(min_len):
         count = Works().filter(
             topics={"id": [t_ia, t_total]}
         ).count()
         cooc_matrix[i, j] = count
         print(f"({i+1}/{n}, {j+1}/{m}) {t_ia}-{t_total}: {count}")
 
-    # Guardar avance parcial en CSV después de cada fila
-    df_partial = pd.DataFrame(cooc_matrix, index=topics_ia, columns=topics_total)
-    df_partial.to_csv("cooc_matrix_partial.csv")
-		
-df_final = pd.DataFrame(cooc_matrix, index=topics_ia, columns=topics_total)
-df_final.to_csv("cooc_matrix.csv")
+# Guardamos resultado para uso posterior
+df = pd.DataFrame(
+    cooc_matrix,
+    index=topics_ia,
+    columns=min_len
+)
 
-# -------------- Caso Práctico ----------------
-
-#works = Works().filter(
-#    topics={"id": ["T10799", "T11106"]}
-#).count()
-
+# Guardar en CSV
+df.to_csv("cooc_matrix.csv", index=True)

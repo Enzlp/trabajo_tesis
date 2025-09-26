@@ -14,6 +14,7 @@ latam_countries_str = "|".join(latam_countries)
 topic_ids = [t['id'].split('/')[-1] for t in Subfields().filter(id=1702).get(per_page=200)[0]['topics']]
 topics_str = "|".join(topic_ids)
 
+
 # Autores en IA y LATAM paginados
 authors_paginated = Authors().filter(
     **{
@@ -25,7 +26,7 @@ authors_paginated = Authors().filter(
 # Obtencion de datos para cada autor
 author_data = []
 count = 0
-max_authors = 100000  
+max_authors = 150000  
 
 for page in authors_paginated:
     if not page or count >= max_authors:
