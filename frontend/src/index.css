@@ -3,8 +3,7 @@
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light;
-  color: #000000;             /* texto negro */
+  color-scheme: light;    
   background-color: #ffffff;  /* fondo blanco */
 
   font-synthesis: none;
@@ -29,7 +28,3 @@ body {
   min-height: 100vh;
 }
 
-h1 {
-  font-size: 3.5vh;
-  line-height: 1.1;
-}
