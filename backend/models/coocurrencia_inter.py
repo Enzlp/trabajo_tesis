@@ -1,5 +1,5 @@
 # ==============================================================================================
-# Calculo de la matriz de coocurrencia entre topicos
+# Calculo de la matriz de coocurrencia entre topicos interdisciplinarios
 # ==============================================================================================
 
 from pyalex import Authors, Subfields, Works, Topics
