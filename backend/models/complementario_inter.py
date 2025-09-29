@@ -6,6 +6,8 @@ from pyalex import Subfields, Authors
 import numpy as np
 import pandas as pd
 
+
+
 # Normalizamos la matriz usando División por la suma de la fila
 df = pd.read_csv("cooc_matrix.csv", index_col=0)
 df_normalized = df.div(df.sum(axis=1), axis=0)

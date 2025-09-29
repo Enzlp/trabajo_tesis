@@ -2,7 +2,7 @@
 # Calculo de la matriz de coocurrencia entre topicos interdisciplinarios
 # ==============================================================================================
 
-from pyalex import Authors, Subfields, Works, Topics
+from pyalex import Subfields, Works, Topics
 import numpy as np
 import pandas as pd
 

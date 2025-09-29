@@ -1,5 +1,6 @@
 .venv
 cooc_matrix.csv
+cooc_matrix_ia.csv
 
 # Created by https://www.gitignore.io
 
