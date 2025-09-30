@@ -92,3 +92,20 @@ __pycache__
 
 .env
 db.sqlite3
+
+
+### react ###
+.DS_*
+*.log
+logs
+**/*.backup.*
+**/*.back.*
+
+node_modules
+bower_components
+
+*.sublime*
+
+psd
+thumb
+sketch
