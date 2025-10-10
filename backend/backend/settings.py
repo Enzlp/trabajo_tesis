@@ -11,21 +11,25 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import os
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
+load_dotenv()
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-gqt*dkn)+ts!&q$%z16sxlh5o-=8r!jtf3n9=w1%o+*t=t@gk%'
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-dev-key-change-this')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 
 # Application definition
@@ -76,11 +80,18 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': "openalex_db",
+        'USER': 'openalex_usr',
+        'PASSWORD': 'iMeih9ePh4eenaeRiey9quahyuw_ib',
+        'HOST': '127.0.0.1',
+        'PORT': '5433', 
+        'OPTIONS': {
+            'options': f'-c search_path={os.getenv("DB_SCHEMA", "openalex")},public',
+            'connect_timeout': 10,
+        }
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators

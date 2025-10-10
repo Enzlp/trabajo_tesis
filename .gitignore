@@ -1,4 +1,5 @@
 .venv
+.env
 cooc_matrix.csv
 cooc_matrix_ia.csv
 
