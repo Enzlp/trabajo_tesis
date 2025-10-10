@@ -1,11 +1,24 @@
 from django.db import models
 
+# Clase para poder traer JSON fields de manera segura
+import json
+class SafeJSONField(models.JSONField):
+    def from_db_value(self, value, expression, connection):
+        if isinstance(value, (list, dict)):
+            return value
+        if isinstance(value, str):
+            try:
+                return json.loads(value)
+            except Exception:
+                return []
+        return value
+
 # Create your models here.
 class Author(models.Model):
 	id = models.TextField(primary_key=True)
 	orcid = models.TextField(blank=True, null=True)
 	display_name = models.TextField(blank=True, null=True)
-	display_name_alternatives = models.JSONField(blank=True, null=True)
+	display_name_alternatives = SafeJSONField(blank=True, null=True)
 	works_count = models.IntegerField(blank=True, null=True)
 	cited_by_count = models.IntegerField(blank=True, null=True)
 	last_known_institution = models.TextField(blank=True, null=True)
@@ -97,9 +110,6 @@ class ConceptAncestor(models.Model):
 	class Meta: 
 		db_table = 'concepts_ancestors'
 		managed = False
-		indexes = [
-		  models.Index(fields=['concept'], name='concepts_ancestors_concept_id_idx'),
-    ]
 	def __str__(self):
 		return f"{self.concept_id} < {self.ancestor_id}"
 	
@@ -163,10 +173,7 @@ class ConceptRelatedConcept(models.Model):
 	class Meta:
 		db_table = 'concepts_related_concepts'
 		managed = False
-		indexes = [
-				models.Index(fields=['concept'], name='concepts_related_concepts_concept_id_idx'),
-				models.Index(fields=['related_concept'], name='concepts_related_concepts_related_concept_id_idx'),
-		]
+
 
 	def __str__(self):
 			return f"{self.concept_id} <> {self.related_concept_id}"
@@ -181,8 +188,8 @@ class Institution(models.Model):
     homepage_url = models.TextField(blank=True, null=True)
     image_url = models.TextField(blank=True, null=True)
     image_thumbnail_url = models.TextField(blank=True, null=True)
-    display_name_acronyms = models.JSONField(blank=True, null=True)
-    display_name_alternatives = models.JSONField(blank=True, null=True)
+    display_name_acronyms = SafeJSONField(blank=True, null=True)
+    display_name_alternatives = SafeJSONField(blank=True, null=True)
     works_count = models.IntegerField(blank=True, null=True)
     cited_by_count = models.IntegerField(blank=True, null=True)
     works_api_url = models.TextField(blank=True, null=True)
@@ -191,9 +198,7 @@ class Institution(models.Model):
     class Meta:
         db_table = 'institutions'
         managed = False
-        indexes = [
-            models.Index(fields=['id'], name='temp_idx_institutions'),
-        ]
+
 
     def __str__(self):
         return str(self.display_name)
@@ -289,8 +294,8 @@ class InstitutionIds(models.Model):
 class Publisher(models.Model):
     id = models.TextField(primary_key=True)
     display_name = models.TextField(blank=True, null=True)
-    alternate_titles = models.JSONField(blank=True, null=True)
-    country_codes = models.JSONField(blank=True, null=True)
+    alternate_titles = SafeJSONField(blank=True, null=True)
+    country_codes = SafeJSONField(blank=True, null=True)
     hierarchy_level = models.IntegerField(blank=True, null=True)
     parent_publisher = models.ForeignKey(
         'self',            
@@ -353,7 +358,7 @@ class PublisherIds(models.Model):
 class Source(models.Model):
     id = models.TextField(primary_key=True)
     issn_l = models.TextField(blank=True, null=True)
-    issn = models.JSONField(blank=True, null=True)
+    issn = SafeJSONField(blank=True, null=True)
     display_name = models.TextField(blank=True, null=True)
     publisher = models.TextField(blank=True, null=True)  
     works_count = models.IntegerField(blank=True, null=True)
@@ -402,7 +407,7 @@ class SourceIds(models.Model):
 	)
 	openalex= models.TextField(blank=True, null=True)
 	issn_l = models.TextField(blank=True, null=True)
-	issn = models.JSONField(blank=True, null=True)
+	issn = SafeJSONField(blank=True, null=True)
 	mag = models.BigIntegerField(blank=True, null=True)
 	wikidata = models.TextField(blank=True, null=True)
 	fatcat = models.TextField(blank=True, null=True)
@@ -426,7 +431,7 @@ class Work(models.Model):
     is_retracted = models.BooleanField(null=True)
     is_paratext = models.BooleanField(null=True)
     cited_by_api_url = models.TextField(blank=True, null=True)
-    abstract_inverted_index = models.JSONField(blank=True, null=True)
+    abstract_inverted_index = SafeJSONField(blank=True, null=True)
     language = models.TextField(blank=True, null=True)
 
     class Meta:
@@ -461,9 +466,7 @@ class WorkAuthorship(models.Model):
     class Meta:
         db_table = 'works_authorships'
         managed = False
-        indexes = [
-            models.Index(fields=['work_id'], name='temp_idx_works_authorships')
-        ]
+
 
 
 class WorksBestOaLocation(models.Model):
@@ -488,9 +491,7 @@ class WorksBestOaLocation(models.Model):
 		class Meta:
 				db_table = 'works_best_oa_locations'
 				managed = False
-				indexes = [
-						models.Index(fields=['work_id'], name='works_best_oa_locations_work_id_idx'),
-				]
+
 
 		def __str__(self):
 				return f"OA Location for {self.work}"
@@ -533,9 +534,7 @@ class WorkConcept(models.Model):
 	class Meta:
 		db_table = 'works_concepts'
 		managed = False
-		indexes = [
-				models.Index(fields=['score', 'concept_id'], name='temp_idx_works_concepts'),
-		]
+
 
 	def __str__(self):
 			return f"Work {self.work_id} - Concept {self.concept_id} (score: {self.score})"
@@ -557,9 +556,7 @@ class WorksIds(models.Model):
 	class Meta:
 			db_table = 'works_ids'
 			managed = False
-			indexes = [
-					models.Index(fields=['doi'], name='temp_idx_works_ids'),
-			]
+
 
 	def __str__(self):
 			return f"IDs for {self.work}"
@@ -586,9 +583,6 @@ class WorksLocation(models.Model):
 			class Meta:
 					db_table = 'works_locations'
 					managed = False
-					indexes = [
-							models.Index(fields=['work_id'], name='works_locations_work_id_idx'),
-					]
 
 			def __str__(self):
 					return f"Location for {self.work}"
@@ -657,9 +651,6 @@ class WorksPrimaryLocation(models.Model):
 		class Meta:
 			db_table = 'works_primary_locations'
 			managed = False
-			indexes = [
-				models.Index(fields=['work_id'], name='works_primary_locations_work_id_idx'),
-			]
 
 		def __str__(self):
 			return f"Primary Location for {self.work}"
