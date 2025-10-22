@@ -14,6 +14,31 @@ class SafeJSONField(models.JSONField):
         return value
 
 # Create your models here.
+
+class Institution(models.Model):
+    id = models.TextField(primary_key=True)
+    ror = models.TextField(blank=True, null=True)
+    display_name = models.TextField(blank=True, null=True)
+    country_code = models.TextField(blank=True, null=True)
+    type = models.TextField(blank=True, null=True)
+    homepage_url = models.TextField(blank=True, null=True)
+    image_url = models.TextField(blank=True, null=True)
+    image_thumbnail_url = models.TextField(blank=True, null=True)
+    display_name_acronyms = SafeJSONField(blank=True, null=True)
+    display_name_alternatives = SafeJSONField(blank=True, null=True)
+    works_count = models.IntegerField(blank=True, null=True)
+    cited_by_count = models.IntegerField(blank=True, null=True)
+    works_api_url = models.TextField(blank=True, null=True)
+    updated_date = models.DateTimeField(blank=True, null=True)  # timestamp without timezone
+
+    class Meta:
+        db_table = 'institutions'
+        managed = False
+
+
+    def __str__(self):
+        return str(self.display_name)
+
 class Author(models.Model):
 	id = models.TextField(primary_key=True)
 	orcid = models.TextField(blank=True, null=True)
@@ -21,7 +46,12 @@ class Author(models.Model):
 	display_name_alternatives = SafeJSONField(blank=True, null=True)
 	works_count = models.IntegerField(blank=True, null=True)
 	cited_by_count = models.IntegerField(blank=True, null=True)
-	last_known_institution = models.TextField(blank=True, null=True)
+	last_known_institution = models.ForeignKey(
+			Institution,
+			on_delete=models.DO_NOTHING,
+			db_column='last_known_institution',
+			related_name='last_known'
+	)
 	works_api_url = models.TextField(blank=True, null=True)
 	updated_date = models.DateTimeField(blank=True, null=True)
 
@@ -178,30 +208,6 @@ class ConceptRelatedConcept(models.Model):
 	def __str__(self):
 			return f"{self.concept_id} <> {self.related_concept_id}"
 
-
-class Institution(models.Model):
-    id = models.TextField(primary_key=True)
-    ror = models.TextField(blank=True, null=True)
-    display_name = models.TextField(blank=True, null=True)
-    country_code = models.TextField(blank=True, null=True)
-    type = models.TextField(blank=True, null=True)
-    homepage_url = models.TextField(blank=True, null=True)
-    image_url = models.TextField(blank=True, null=True)
-    image_thumbnail_url = models.TextField(blank=True, null=True)
-    display_name_acronyms = SafeJSONField(blank=True, null=True)
-    display_name_alternatives = SafeJSONField(blank=True, null=True)
-    works_count = models.IntegerField(blank=True, null=True)
-    cited_by_count = models.IntegerField(blank=True, null=True)
-    works_api_url = models.TextField(blank=True, null=True)
-    updated_date = models.DateTimeField(blank=True, null=True)  # timestamp without timezone
-
-    class Meta:
-        db_table = 'institutions'
-        managed = False
-
-
-    def __str__(self):
-        return str(self.display_name)
 
 class InstitutionAssociatedInstitution(models.Model):
 	institution = models.ForeignKey(
@@ -698,3 +704,28 @@ class WorksRelatedWork(models.Model):
 
     def __str__(self):
         return f"{self.work} related to {self.related_work}"
+
+
+# VISTAS MATERIALIZADAS
+class LatamAuthorView(models.Model):
+    id = models.TextField(primary_key=True)
+    orcid = models.TextField()
+    display_name = models.TextField()
+    works_count = models.IntegerField()
+    cited_by_count = models.IntegerField()
+
+    class Meta:
+        managed = False            # Django no crea ni elimina la vista
+        db_table = 'latam_authors'  # Esquema + nombre de la vista
+
+class MvIaConceptView(models.Model):
+	id = models.TextField(primary_key=True)
+	display_name = models.TextField()
+	level = models.IntegerField()
+	description = models.TextField()
+	works_count = models.IntegerField()
+	cited_by_count = models.IntegerField() 
+
+	class Meta:
+		managed = False
+		db_table = 'mv_ia_concepts'
