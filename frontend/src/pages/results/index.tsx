@@ -12,7 +12,7 @@ export default function Results() {
 
 	console.log(conceptList)
     return (
-      <div>
+      <div className="min-h-screen bg-gray-100">
       </div>
     )
 }
