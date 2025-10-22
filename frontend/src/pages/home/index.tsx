@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 interface Concept {
   id: number;
@@ -10,6 +11,8 @@ export default function Home() {
   const [query, setQuery] = useState<string>("");
   const [results, setResults] = useState<Concept[]>([]);
   const [selected, setSelected] = useState<Concept[]>([]); // Aca se van agregando los conceptos para el vector de usuario
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!query) {
@@ -42,8 +45,11 @@ export default function Home() {
     setSelected(selected.filter((item) => item.id !== id));
   };
 
-  const searchRecommended = () =>{
-    // Aqui redireccionar a recomendacion con los conceptos elegidos
+  const searchRecommended = () => {
+    // Redirecciona a /results pasando la lista como state
+    if(selected.length > 0){
+        navigate("/results", { state: { conceptList: selected } });
+    }
   };
 
   return (
