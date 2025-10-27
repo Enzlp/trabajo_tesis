@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.postgres.fields import ArrayField
 
 # Clase para poder traer JSON fields de manera segura
 import json
@@ -729,3 +730,13 @@ class MvIaConceptView(models.Model):
 	class Meta:
 		managed = False
 		db_table = 'mv_ia_concepts'
+
+class MvLatamIaConceptView(models.Model):
+    author_id = models.CharField(max_length=255, primary_key=True)
+    display_name = models.CharField(max_length=500)
+    concept_ids = ArrayField(models.CharField(max_length=255))
+    concept_scores = ArrayField(models.FloatField())
+    
+    class Meta:
+        managed = False 
+        db_table = 'mv_latam_ia_authors_concepts'

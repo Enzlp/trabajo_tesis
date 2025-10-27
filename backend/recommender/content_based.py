@@ -6,13 +6,21 @@
 # El modelo provee recomendaciones en base a perfiles conceptuales de los autores (investigadores). Si dos investigadores tienen perfiles conceptuales similares, 
 # probablemente tengan intereses de investigación alineados y puedan colaborar de manera natural.
 
-from api.models import WorkConcept, Concept, Author, Institution, LatamAuthorView
-from .utils import cosine_similarity
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "backend.settings")
+import django
+django.setup()
+
+from api.models import LatamAuthorView
 import numpy as np
-from django.db.models import Avg, Subquery
-from collections import defaultdict
-import heapq
-import time
+from scipy.sparse import lil_matrix
+import pickle
+import joblib
+from pathlib import Path
+from sklearn.preprocessing import normalize
+from sklearn.metrics.pairwise import cosine_similarity
 
 class ContentBasedRecommendation:
     """Recommender basado en similitud de conceptos"""
@@ -24,92 +32,83 @@ class ContentBasedRecommendation:
     LATAM_COUNTRIES = [
         'AR', 'BO', 'BR', 'CL', 'CO', 'CR', 'CU', 'DO', 'EC', 'SV', 'GT', 'HN', 'MX', 'NI', 'PA', 'PY', 'PE', 'PR', 'UY', 'VE'
     ]
-    
-    # Metodo para obtener todos los conceptos
-    @classmethod
-    def get_all_concepts(cls):
-        if cls._concepts_cache is None:
-            cls._concepts_cache = list(
-                Concept.objects.values_list('id', flat=True).order_by('id')
-            )
-        return cls._concepts_cache
 
-    # Metodo para construir un vector de conceptos para un autor
-    @classmethod
-    def build_concept_vector(cls, concept_dict):
-        # Query: obtener todos los conceptos en orden
-        all_concepts = cls.get_all_concepts() 
-        
-        # Convertir dict a vector
-        vector = np.zeros(len(all_concepts))
-        concept_to_idx = {cid: idx for idx, cid in enumerate(all_concepts)}
-        
-        for concept_id, score in concept_dict.items():
-            if concept_id in concept_to_idx:
-                vector[concept_to_idx[concept_id]] = score
-        
-        # Normalizar
-        norm = np.linalg.norm(vector)
-        if norm > 0:
-            vector = vector / norm
-        
-        return vector
+    # Metodo para cargar los datos precalculados
+    @staticmethod
+    def load_models(models_dir):
+        # Mapeo de conceptos
+        with open(models_dir / 'concept_mapping.pkl', 'rb') as f:
+            concept_to_index = pickle.load(f)
 
-    # Metodo para convertir datos ingresados a vector
-    @classmethod
-    def convert_vector(cls, input_data):
-        # Obtener longitud esperada del vector
-        expected_length = len(cls.get_all_concepts())
-        
-        if isinstance(input_data, str):
-            # Si es author_id, obtener sus conceptos
-            concept_scores = (
-                WorkConcept.objects
-                .filter(work__authorships__author_id=input_data)
-                .values('concept_id')
-                .annotate(avg_score=Avg('score'))
-            )
-            concept_dict = {cs['concept_id']: cs['avg_score'] for cs in concept_scores}
-            return cls.build_concept_vector(concept_dict)
-        elif isinstance(input_data, np.ndarray):
-            # Validar que el vector tenga la longitud correcta
-            if len(input_data) != expected_length:
-                raise ValueError(f"Vector debe tener longitud {expected_length}, se recibió {len(input_data)}")
-            # Normalizar si es necesario
-            norm = np.linalg.norm(input_data)
-            if norm > 0:
-                return input_data / norm
-            return input_data
-        else:
-            raise ValueError("Input inválido: debe ser author_id (str) o vector de conceptos (np.ndarray)")
+        # Modelo SVD
+        svd_model = joblib.load(models_dir / 'svd_model.pkl')
+
+        # Modelo embeddings autor
+        author_embeddings = np.load(models_dir / 'author_embeddings.npy')
+
+        # IDs de autores
+        author_ids = np.load(models_dir / 'author_ids.npy')
+
+        return concept_to_index, svd_model, author_embeddings, author_ids
     
-    # Calcular similitud entre inputs
-    @classmethod
-    def calculate_similarity(cls, input_1, input_2):
-        return cosine_similarity(input_1, input_2)
-    
+    # Metodo para cacular el vector de conceptos del usuario
+    @staticmethod
+    def create_user_vector(user_concepts, n_concepts, concept_to_index):
+
+        user_vector = lil_matrix((1, n_concepts), dtype=np.float32)
+        smoothing = 0.01
+        user_vector[:] = smoothing  # un valor mínimo para todos los conceptos
+
+        for concept in user_concepts:
+            concept_id = concept['id']
+            concept_idx = concept_to_index[concept_id]
+            user_vector[0, concept_idx] = 1.0  # refuerza los conceptos seleccionados
+
+        user_vector = user_vector.tocsr()
+
+        return user_vector
 
     # Metodo para obtener recomendaciones
     @classmethod
-    def get_recommendations(cls, user_input, top_n=20, similarity_threshold=0.1, order_by=None):
-        print("Obteniendo recomendaciones...")
-        
-        start_time = time.perf_counter()  # high-precision timer
+    def get_recommendations(cls, user_input, top_k=40, similarity_threshold=0.1, order_by=None):
 
-        # QUERY 1: Obtener todos los autores LATAM desde la materialized view
-        latam_authors_ids = list(
-            LatamAuthorView.objects.all().values_list('id', flat=True)
-        )
+        # Cargar modelos
+        models_dir = Path("recommender/files")
+        concept_to_index, svd_model, author_embeddings, author_ids = cls.load_models(models_dir)
+        n_concepts = len(concept_to_index)
 
-        # Si el usuario ingresa un id entonces esta se agrega a la lista
-        if isinstance(user_input, str):
-            latam_authors_ids.insert(0, user_input)
-        
-        # Query 2: Obtenemos todos los conceptos para cada autor
-        #recommendations = list(latam_authors_qs)
+        # Calcular vectores
+        user_vector = cls.create_user_vector(user_input, n_concepts,concept_to_index)
 
-        end_time = time.perf_counter()
-        elapsed = end_time - start_time
-        print(f"Tiempo para obtener autores LATAM: {elapsed:.3f} segundos")
+        # Normalizamos vector de usuario y transformamos a svd
+        user_vector_normalized = normalize(user_vector, norm='l2', axis=1)
+        user_embedding = svd_model.transform(user_vector_normalized.toarray())
+
+        # Calcular similaridad
+        similarities = cosine_similarity(user_embedding, author_embeddings)[0]
+
+        # Se obtienen las top k recomendaciones
+        top_indices = np.argsort(similarities)[-top_k:][::-1]
+
+        # Preparan resultados
+        top_author_ids = author_ids[top_indices].tolist()
+        #print(top_author_ids)
+        #print(similarities[top_indices[len(top_indices)-1]])
         
-        return count
+        authors = LatamAuthorView.objects.filter(id__in=top_author_ids)
+        authors_dict = {a.id: a for a in authors}
+
+        recommendations = []
+        for i, author_id in enumerate(top_author_ids):
+            a_info = authors_dict.get(author_id)
+            if a_info:
+                recommendations.append({
+                    "author_id": author_id,
+                    'orcid': getattr(a_info, 'orcid', None),
+                    "display_name": a_info.display_name,
+                    'similarity_score': float(similarities[top_indices[i]]),
+                    'works_count': getattr(a_info, 'works_count', 0),
+                    'cited_by_count': getattr(a_info, 'cited_by_count', 0)
+                })
+
+        return recommendations

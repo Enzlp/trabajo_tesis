@@ -1,7 +1,12 @@
 .venv
 .env
-cooc_matrix.csv
-cooc_matrix_ia.csv
+
+# Archivos de recomendacion
+concept_mapping.pkl
+author_embeddings.npy
+author_ids.npy
+svd_model.pkl
+
 
 # Created by https://www.gitignore.io
 

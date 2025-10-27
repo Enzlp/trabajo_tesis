@@ -39,37 +39,26 @@ class RecommendationSerializer(serializers.Serializer):
 class RecommendationListSerializer(serializers.Serializer):
     total_recommendations = serializers.IntegerField()
     recommendations = RecommendationSerializer(many=True)
-    query_type = serializers.CharField()
     
+class ConceptInputSerializer(serializers.Serializer):
+    """Valida cada concepto individualmente"""
+    id = serializers.CharField(
+        max_length=100,
+        required=True,
+        help_text="ID del concepto de OpenAlex (ej: C41008148)"
+    )
+    display_name = serializers.CharField(
+        max_length=200,
+        required=True,
+        help_text="Nombre del concepto (ej: Machine Learning)"
+    )
+
+
 class GetRecommendationsRequestSerializer(serializers.Serializer):
-    """
-    Serializer para validar el input del usuario.
-    """
-    author_id = serializers.CharField(required=False, allow_blank=True)
-    concept_ids = serializers.ListField(
-        child=serializers.CharField(),
-        required=False
+    """Valida el input completo del usuario"""
+    concept_vector = serializers.ListField(
+        child=ConceptInputSerializer(),
+        min_length=1,
+        max_length=100,
+        help_text="Lista de conceptos de interés del usuario"
     )
-    top_n = serializers.IntegerField(default=10, min_value=1, max_value=50)
-    similarity_threshold = serializers.FloatField(
-        default=0.1, 
-        min_value=0.0, 
-        max_value=1.0
-    )
-    
-    def validate(self, data):
-        """Validar que se proporciona author_id O concept_ids"""
-        author_id = data.get('author_id')
-        concept_ids = data.get('concept_ids')
-        
-        if not author_id and not concept_ids:
-            raise serializers.ValidationError(
-                "Debes proporcionar 'author_id' o 'concept_ids'"
-            )
-        
-        if author_id and concept_ids:
-            raise serializers.ValidationError(
-                "Proporciona solo 'author_id' o 'concept_ids', no ambos"
-            )
-        
-        return data
