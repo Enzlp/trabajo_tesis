@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Author, MvIaConceptView
+from .models import Author, MvIaConceptView, LatamAuthorView
 
 class AuthorSerializer(serializers.ModelSerializer):
     class Meta:
@@ -26,6 +26,14 @@ class MvIaConceptViewSerializer(serializers.ModelSerializer):
             "display_name"
         ]
 
+# Serializer autocompletado de autores
+class LatamAuthorViewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LatamAuthorView
+        fields = [
+            "id",
+            "display_name"
+        ]
 
 # Serializers para recommendaciones
 class RecommendationSerializer(serializers.Serializer):

@@ -1,32 +1,42 @@
-import {useState } from "react";
+import { useState } from "react";
+import loading_animation from "../../assets/loading_animation.svg";
 
 type Recommendation = {
   author_id: string;
-  orcid: string | null; 
+  orcid: string | null;
   display_name: string;
   similarity_score: number;
   works_count: number;
   cited_by_count: number;
-}
-
+};
 
 interface RecommendedCardProps {
-  recs: Recommendation[];
+  recs: Recommendation[] | null; 
 }
 
 export default function RecommendedCard({ recs }: RecommendedCardProps) {
   const [page, setPage] = useState<number>(1);
   const itemsPerPage = 8;
 
-  const totalPages = Math.ceil(recs.length / itemsPerPage);
+  if (!recs || recs.length === 0) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <img
+          src={loading_animation}
+          alt="Cargando..."
+          className="w-16 h-16 animate-spin"
+        />
+      </div>
+    );
+  }
 
+  const totalPages = Math.ceil(recs.length / itemsPerPage);
   const nextPage = () => {
     if (page < totalPages) setPage(page + 1);
-  }
-
+  };
   const prevPage = () => {
     if (page > 1) setPage(page - 1);
-  }
+  };
 
   const startIndex = (page - 1) * itemsPerPage;
   const currentRecs = recs.slice(startIndex, startIndex + itemsPerPage);
@@ -40,7 +50,9 @@ export default function RecommendedCard({ recs }: RecommendedCardProps) {
         >
           <div className="flex justify-between items-center">
             <h3 className="font-bold text-2xl">{rec.display_name}</h3>
-            <p className="text-gray-500 font-semibold">Score de similitud: {rec.similarity_score.toFixed(2)}</p>
+            <p className="text-gray-500 font-semibold">
+              Score de similitud: {rec.similarity_score.toFixed(2)}
+            </p>
           </div>
           <div className="flex justify-between text-gray-500 font-semibold">
             <div className="flex flex-col">
@@ -48,7 +60,8 @@ export default function RecommendedCard({ recs }: RecommendedCardProps) {
               <p>N° de citas: {rec.cited_by_count}</p>
             </div>
             <p>
-              ORCID: {rec.orcid ? (
+              ORCID:{" "}
+              {rec.orcid ? (
                 <a
                   href={rec.orcid}
                   target="_blank"
@@ -58,12 +71,13 @@ export default function RecommendedCard({ recs }: RecommendedCardProps) {
                   {rec.orcid}
                 </a>
               ) : (
-                'N/A'
+                "N/A"
               )}
             </p>
           </div>
         </div>
       ))}
+
       <div className="flex gap-4 mt-4">
         <button
           onClick={prevPage}
@@ -84,6 +98,5 @@ export default function RecommendedCard({ recs }: RecommendedCardProps) {
         </button>
       </div>
     </div>
-  )
+  );
 }
-

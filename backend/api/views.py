@@ -2,8 +2,8 @@ from django.shortcuts import render
 
 # Create your views here.
 from rest_framework import viewsets, generics, status
-from .models import Author, Concept, MvIaConceptView
-from .serializers import AuthorSerializer, RecommendationListSerializer, GetRecommendationsRequestSerializer, MvIaConceptViewSerializer
+from .models import Author, Concept, MvIaConceptView, LatamAuthorView
+from .serializers import AuthorSerializer, RecommendationListSerializer, GetRecommendationsRequestSerializer, MvIaConceptViewSerializer, LatamAuthorViewSerializer
 from recommender.content_based import ContentBasedRecommendation
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -21,13 +21,21 @@ class AuthorViewSet(viewsets.ReadOnlyModelViewSet):
 class ConceptAutocomplete(generics.ListAPIView):
     serializer_class = MvIaConceptViewSerializer
 
-    # TODO: evaluar limitar conceptos a los con acestro IA
-
     def get_queryset(self):
         query = self.request.GET.get('search', '')  # obtiene ?search=...
         if query:
-            return MvIaConceptView.objects.filter(display_name__istartswith=query)[:10]  # limitar resultados
+            return MvIaConceptView.objects.filter(display_name__istartswith=query)[:10]  
         return MvIaConceptView.objects.none()
+    
+class LatamAuthorAutocomplete(generics.ListAPIView):
+    serializer_class = LatamAuthorViewSerializer
+
+    def get_queryset(self):
+        query = self.request.GET.get('search', '')
+        if query:
+            return LatamAuthorView.objects.filter(display_name__istartswith=query)[:10]
+        return LatamAuthorView.objects.none()
+
 
 class RecommendationViewSet(APIView):
     """
