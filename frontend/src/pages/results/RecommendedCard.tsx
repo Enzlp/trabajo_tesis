@@ -1,5 +1,6 @@
 import { useState } from "react";
 import loading_animation from "../../assets/loading_animation.svg";
+import { useNavigate } from "react-router-dom";
 
 type Recommendation = {
   author_id: string;
@@ -17,6 +18,7 @@ interface RecommendedCardProps {
 export default function RecommendedCard({ recs }: RecommendedCardProps) {
   const [page, setPage] = useState<number>(1);
   const itemsPerPage = 8;
+  const navigate = useNavigate();
 
   if (!recs || recs.length === 0) {
     return (
@@ -41,12 +43,16 @@ export default function RecommendedCard({ recs }: RecommendedCardProps) {
   const startIndex = (page - 1) * itemsPerPage;
   const currentRecs = recs.slice(startIndex, startIndex + itemsPerPage);
 
+  
+
+
   return (
     <div className="flex flex-col items-end border-2 border-gray-300 rounded-xl p-6 bg-white min-h-screen">
       {currentRecs.map((rec: Recommendation) => (
         <div
           key={rec.author_id}
           className="w-full p-4 mb-4 rounded bg-indigo-50 flex flex-col cursor-pointer"
+          onClick={()=>{navigate(`/authors/${rec.author_id.split("/").pop()}`)}}
         >
           <div className="flex justify-between items-center">
             <h3 className="font-bold text-2xl">{rec.display_name}</h3>

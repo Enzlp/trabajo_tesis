@@ -46,7 +46,6 @@ export default function Results() {
         const data = await response.json();
         setRecommendations(data.recommendations);
         setTotalResult(data.total_recommendations);
-        console.log(data.total_recommendations)
        
       } catch (err) {
         if (err instanceof Error) {
@@ -64,7 +63,7 @@ export default function Results() {
   
   return (
     <div className="min-h-screen px-8 py-2 flex flex-col m-4">
-      <div className="flex items-center cursor-pointer rounded-2xl hover:bg-gray-200 w-fit p-2" onClick={goBack}>
+      <div className="flex items-center cursor-pointer rounded-2xl hover:bg-gray-200 w-fit p-2 my-2" onClick={goBack}>
         <img src={arrowLeft} className="w-6 h-6" alt="Volver" />
         <h1 className="font-semibold text-lg px-2">Atrás</h1>
       </div>

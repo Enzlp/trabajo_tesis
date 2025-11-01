@@ -1,6 +1,5 @@
 from rest_framework import serializers
-from .models import Author, MvIaConceptView, LatamAuthorView
-
+from .models import Author, MvIaConceptView, LatamAuthorView, Institution, Work
 class AuthorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Author
@@ -16,6 +15,31 @@ class AuthorSerializer(serializers.ModelSerializer):
             "updated_date"
         ]
 
+class InstitutionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Institution
+        fields = [
+            "id",
+            "display_name",
+            "homepage_url"
+        ]
+
+class WorkSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Work
+        fields = [
+            "id",
+            "doi",
+            "title" ,
+            "display_name" ,
+            "publication_year",
+            "publication_date",
+            "type" ,
+            "cited_by_count",
+            "is_retracted",
+            "is_paratext",
+            "language"
+        ]
 
 # Serializer autocompletado concepts
 class MvIaConceptViewSerializer(serializers.ModelSerializer):

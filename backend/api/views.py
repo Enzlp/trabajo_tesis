@@ -2,8 +2,8 @@ from django.shortcuts import render
 
 # Create your views here.
 from rest_framework import viewsets, generics, status
-from .models import Author, Concept, MvIaConceptView, LatamAuthorView
-from .serializers import AuthorSerializer, RecommendationListSerializer, GetRecommendationsRequestSerializer, MvIaConceptViewSerializer, LatamAuthorViewSerializer
+from .models import Author, MvIaConceptView, LatamAuthorView, Institution, Work, WorkAuthorship
+from .serializers import AuthorSerializer, RecommendationListSerializer, GetRecommendationsRequestSerializer, MvIaConceptViewSerializer, LatamAuthorViewSerializer, InstitutionSerializer, WorkSerializer
 from recommender.content_based import ContentBasedRecommendation
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -13,9 +13,49 @@ class AuthorViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = AuthorSerializer
 
     def get_queryset(self):
-        # Limitar a 50 registros para pruebas
+        queryset = Author.objects.all()
+
+        author_id = self.request.query_params.get('id')
+        if author_id:
+            return queryset.filter(id=author_id)
+
         return Author.objects.all()[:50]
     
+class InstitutionViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Institution.objects.all()
+    serializer_class = InstitutionSerializer
+
+    def get_queryset(self):
+        queryset = Institution.objects.all()
+
+        institution_id = self.request.query_params.get('id')
+        if institution_id:
+            return queryset.filter(id=institution_id)
+        return
+    
+# View para works de un autor
+class AuthorWorksView(APIView):
+    def get(self, request, author_id: str):
+        author_prefix = "https://openalex.org/"
+        limit = int(request.query_params.get("limit", 50))
+        last_work_id = request.query_params.get("last_work_id")
+
+        qs = WorkAuthorship.objects.filter(author_id=f"{author_prefix}{author_id}")
+        if last_work_id:
+            qs = qs.filter(work_id__gt=last_work_id)
+
+        qs = qs.order_by("work_id").values_list("work_id", flat=True)[:limit]
+        work_ids = list(qs)
+
+        works = Work.objects.filter(id__in=work_ids)
+        
+        serializer = WorkSerializer(works, many=True)
+
+
+        return Response({
+            "results": serializer.data,
+            "next_last_work_id": work_ids[-1] if work_ids else None
+        })
 
 # View autocompletado concepts
 class ConceptAutocomplete(generics.ListAPIView):

@@ -466,7 +466,7 @@ class WorkAuthorship(models.Model):
 			Institution,
 			on_delete=models.DO_NOTHING,
 			db_column = 'institution_id',
-			related_name = 'suthorship_affiliations'
+			related_name = 'authorship_affiliations'
 		) 
     raw_affiliation_string = models.TextField(blank=True, null=True)
 
