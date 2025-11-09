@@ -10,12 +10,14 @@ function Navbar() {
         <h1 className="font-bold text-[#00d1b2] text-2xl">Colaborador IA</h1>
       </div>
 
+      {/*
       <div
         onClick={() => navigate("/dashboard")}
         className="text-[#00d1b2] font-semibold text-xl hover:underline cursor-pointer"
       >
         Dashboard
       </div>
+      */}
     </div>
   );
 }

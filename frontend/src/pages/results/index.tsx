@@ -24,6 +24,7 @@ export default function Results() {
   const navigate = useNavigate();
   const [totalResult, setTotalResult] = useState<number>(0)
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [orderBy, setOrderBy] = useState<string>("");
 
   useEffect(() => {
     const conceptList: Concept[] = location.state?.conceptList || [];
@@ -60,7 +61,12 @@ export default function Results() {
   const goBack = () => {
     navigate('/');
   }
-  
+
+  const changeOrder = (by: string)=>{
+    setOrderBy(by);
+    console.log(orderBy);
+  }
+
   return (
     <div className="min-h-screen px-8 py-2 flex flex-col m-4">
       <div className="flex items-center cursor-pointer rounded-2xl hover:bg-gray-200 w-fit p-2 my-2" onClick={goBack}>
@@ -71,13 +77,13 @@ export default function Results() {
       <div className="flex w-full gap-4">
         <div className="flex flex-col w-6/10">
           <h1 className="text-2xl font-bold mb-4">Investigadores recomendados</h1>
-          <RecommendedCard recs={recommendations} />
+          <RecommendedCard recs={recommendations} orderBy={orderBy}/>
         </div>
         
         <div className="flex flex-col w-4/10">
           <div className="flex flex-col">
             <h1 className="text-2xl font-bold mb-4">Filtros</h1>
-            <FilterCard />
+            <FilterCard orderFunction ={changeOrder}/>
           </div>
           <div className="flex flex-col">
             <h1 className="text-2xl font-bold my-4">Stats</h1>

@@ -13,9 +13,12 @@ type Recommendation = {
 
 interface RecommendedCardProps {
   recs: Recommendation[] | null; 
+  orderBy: string;
 }
 
-export default function RecommendedCard({ recs }: RecommendedCardProps) {
+
+
+export default function RecommendedCard({ recs, orderBy }: RecommendedCardProps) {
   const [page, setPage] = useState<number>(1);
   const itemsPerPage = 8;
   const navigate = useNavigate();
@@ -32,7 +35,17 @@ export default function RecommendedCard({ recs }: RecommendedCardProps) {
     );
   }
 
-  const totalPages = Math.ceil(recs.length / itemsPerPage);
+  // Ordenar según orderBy
+  let sortedRecs = [...recs]; // hacer copia para no mutar props
+  if (orderBy === 'sim') {
+    sortedRecs.sort((a, b) => b.similarity_score - a.similarity_score);
+  } else if (orderBy === 'cites') {
+    sortedRecs.sort((a, b) => b.cited_by_count - a.cited_by_count);
+  } else if (orderBy === 'works') {
+    sortedRecs.sort((a, b) => b.works_count - a.works_count);
+  }
+
+  const totalPages = Math.ceil(sortedRecs.length / itemsPerPage);
   const nextPage = () => {
     if (page < totalPages) setPage(page + 1);
   };
@@ -41,10 +54,7 @@ export default function RecommendedCard({ recs }: RecommendedCardProps) {
   };
 
   const startIndex = (page - 1) * itemsPerPage;
-  const currentRecs = recs.slice(startIndex, startIndex + itemsPerPage);
-
-  
-
+  const currentRecs = sortedRecs.slice(startIndex, startIndex + itemsPerPage);
 
   return (
     <div className="flex flex-col items-end border-2 border-gray-300 rounded-xl p-6 bg-white min-h-screen">
@@ -52,7 +62,7 @@ export default function RecommendedCard({ recs }: RecommendedCardProps) {
         <div
           key={rec.author_id}
           className="w-full p-4 mb-4 rounded bg-indigo-50 flex flex-col cursor-pointer"
-          onClick={()=>{navigate(`/authors/${rec.author_id.split("/").pop()}`)}}
+          onClick={() => navigate(`/authors/${rec.author_id.split("/").pop()}`)}
         >
           <div className="flex justify-between items-center">
             <h3 className="font-bold text-2xl">{rec.display_name}</h3>

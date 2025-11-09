@@ -87,10 +87,28 @@ class ConceptInputSerializer(serializers.Serializer):
 
 
 class GetRecommendationsRequestSerializer(serializers.Serializer):
-    """Valida el input completo del usuario"""
     concept_vector = serializers.ListField(
         child=ConceptInputSerializer(),
-        min_length=1,
-        max_length=100,
-        help_text="Lista de conceptos de interés del usuario"
+        required=False,
+        allow_empty=True,
+        help_text="Lista de conceptos de interés del usuario (opcional)"
     )
+
+    author_id = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        help_text="ID del autor para recomendaciones colaborativas (opcional)"
+    )
+
+    def validate(self, data):
+        concept_vector = data.get("concept_vector", [])
+        author_id = data.get("author_id", "").strip()
+
+        # Reglas: al menos uno debe existir
+        if not concept_vector and not author_id:
+            raise serializers.ValidationError(
+                "Debes enviar al menos concept_vector o author_id."
+            )
+
+        return data
+

@@ -2,10 +2,7 @@
 .env
 
 # Archivos de recomendacion
-concept_mapping.pkl
-author_embeddings.npy
-author_ids.npy
-svd_model.pkl
+files/
 
 
 # Created by https://www.gitignore.io

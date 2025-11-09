@@ -740,3 +740,12 @@ class MvLatamIaConceptView(models.Model):
     class Meta:
         managed = False 
         db_table = 'mv_latam_ia_authors_concepts'
+
+class LatamIaCoauthorshipView(models.Model):
+	coauthor_1 = models.CharField()
+	coauthor_2 = models.CharField()
+	shared_works = models.IntegerField()
+
+	class Meta: 
+		managed= False
+		db_table = 'latam_ia_coauthorships'
