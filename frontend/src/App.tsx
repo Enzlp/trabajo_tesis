@@ -1,7 +1,6 @@
 import './App.css'
 import Navbar from './components/Navbar'
 import { BrowserRouter as Router, Routes, Route} from 'react-router-dom';
-import Dashboard from './pages/dashboard/index';
 import Home from './pages/home/index';
 import Results from './pages/results';
 import Authors from './pages/authors';
@@ -15,7 +14,6 @@ function App() {
 
         <Routes>
           <Route path = "/" element = {<Home />} />
-          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/results" element={<Results />} />
           <Route path="/authors/:authorId" element={<Authors />}/>
         </Routes>

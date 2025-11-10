@@ -116,6 +116,7 @@ export default function AuthorWorks() {
         <div
           key={work.id}
           className="p-4 hover:bg-gray-100 hover:cursor-pointer transition-colors duration-300"
+          onClick={() => window.open(work.id, "_blank")}
         >
           <h3
             className="text-base font-semibold"

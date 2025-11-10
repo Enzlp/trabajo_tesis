@@ -30,7 +30,7 @@ class CollaborativeFilteringQueries:
         print(models_dir)
         emb_norm, author_to_idx, author_ids = cls.load_models(models_dir)
         if author_id not in author_to_idx:
-            raise ValueError(f"Author ID {author_id} not found in mapping")
+            return []
         
         idx = author_to_idx[author_id]
 

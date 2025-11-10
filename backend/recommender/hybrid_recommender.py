@@ -3,10 +3,7 @@ from recommender.collaborative_filtering.queries import CollaborativeFilteringQu
 
 class HybridRecommender:
     @staticmethod
-    def get_recommendations(user_input=None, author_id=None, k=30):
-        alpha = 0.4
-        beta = 0.6
-
+    def get_recommendations(user_input=None, author_id=None, k=30, alpha= 0.4, beta=0.6):
         content = ContentBasedQueries()
         colab = CollaborativeFilteringQueries()
 
@@ -31,6 +28,10 @@ class HybridRecommender:
         # ------------------------------------------------------------------
         recs_1 = content.get_recommendations(user_input=user_input, top_k=k)
         recs_2 = colab.get_recommendations(author_id=author_id, k=k)
+
+        # Si el autor no tiene colaboraciones usa content based
+        if len(recs_2) == 0:
+            return recs_1
 
         d1 = {aid: score for aid, score in recs_1}
         d2 = {aid: score for aid, score in recs_2}

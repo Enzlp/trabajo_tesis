@@ -14,16 +14,15 @@ type Recommendation = {
 interface RecommendedCardProps {
   recs: Recommendation[] | null; 
   orderBy: string;
+  loading: boolean;
 }
 
-
-
-export default function RecommendedCard({ recs, orderBy }: RecommendedCardProps) {
+export default function RecommendedCard({ recs, orderBy, loading }: RecommendedCardProps) {
   const [page, setPage] = useState<number>(1);
   const itemsPerPage = 8;
   const navigate = useNavigate();
 
-  if (!recs || recs.length === 0) {
+  if ((!recs || recs.length === 0) && loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <img
@@ -35,8 +34,18 @@ export default function RecommendedCard({ recs, orderBy }: RecommendedCardProps)
     );
   }
 
+  if((!recs || recs.length === 0) && !loading){
+    return (
+      <div className="flex flex-col border-2 border-gray-300 rounded-xl">
+        <div className="flex justify-center items-center min-h-screen">
+          <h3 className="text-gray-500 text-lg font-semibold">Autor no posee colaboraciones para explorar recomendaciones en Latinoamerica en inteligencia artificial</h3>
+        </div>
+      </div>
+    );
+  }
+
   // Ordenar según orderBy
-  let sortedRecs = [...recs]; // hacer copia para no mutar props
+  const sortedRecs = [...recs]; // hacer copia para no mutar props
   if (orderBy === 'sim') {
     sortedRecs.sort((a, b) => b.similarity_score - a.similarity_score);
   } else if (orderBy === 'cites') {

@@ -1,14 +1,19 @@
 import { useEffect, useState, useRef } from "react";
 
 interface Author {
-  id: string;
+  author_id: string;
   display_name: string;
 }
 
-function AuthorInput() {
+type AuthorInputProps = {
+  value: string;
+  onChangeValue: (nuevoValor: string) => void;
+};
+
+
+function AuthorInput({value, onChangeValue}: AuthorInputProps) {
   const [query, setQuery] = useState<string>("");
   const [results, setResults] = useState<Author[]>([]);
-  const [selected, setSelected] = useState<string>("");
 
 
   const isSelecting = useRef(false);
@@ -36,7 +41,7 @@ function AuthorInput() {
 
   const handleSelect = (author: Author) => {
     isSelecting.current = true;       
-    setSelected(author.id);
+    onChangeValue(author.author_id);
     setQuery(author.display_name);
     setResults([]);                 
   };
@@ -56,7 +61,7 @@ function AuthorInput() {
           <ul className="absolute top-full left-0 w-full bg-white border border-gray-300 rounded-b-md max-h-60 overflow-y-auto z-20 text-start">
             {results.map((item) => (
               <li
-                key={item.id}
+                key={item.author_id}
                 className="p-2 cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSelect(item)}
               >

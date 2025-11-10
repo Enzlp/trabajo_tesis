@@ -22,22 +22,31 @@ type Recommendation = {
 export default function Results() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [loading, setLoading] = useState<boolean>(true) 
   const [totalResult, setTotalResult] = useState<number>(0)
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [orderBy, setOrderBy] = useState<string>("");
 
   useEffect(() => {
     const conceptList: Concept[] = location.state?.conceptList || [];
+    const authorId: string = location.state?.authorId || ""
+    console.log(conceptList)
     const fetchRecommendations = async () => {
       try {
+        const payload: any = {};
+        if (conceptList.length > 0) {
+          payload.concept_vector = conceptList;
+        }
+
+        if (authorId !== "") {
+          payload.author_id = authorId;
+        }
         const response = await fetch('http://127.0.0.1:8000/api/recommendation/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            concept_vector: conceptList
-          })
+          body: JSON.stringify(payload),
         });
         
         if (!response.ok) {
@@ -47,6 +56,7 @@ export default function Results() {
         const data = await response.json();
         setRecommendations(data.recommendations);
         setTotalResult(data.total_recommendations);
+        setLoading(false);
        
       } catch (err) {
         if (err instanceof Error) {
@@ -64,7 +74,6 @@ export default function Results() {
 
   const changeOrder = (by: string)=>{
     setOrderBy(by);
-    console.log(orderBy);
   }
 
   return (
@@ -77,7 +86,7 @@ export default function Results() {
       <div className="flex w-full gap-4">
         <div className="flex flex-col w-6/10">
           <h1 className="text-2xl font-bold mb-4">Investigadores recomendados</h1>
-          <RecommendedCard recs={recommendations} orderBy={orderBy}/>
+          <RecommendedCard recs={recommendations} orderBy={orderBy} loading={loading}/>
         </div>
         
         <div className="flex flex-col w-4/10">

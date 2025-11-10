@@ -7,11 +7,13 @@ interface Concept {
   display_name: string;
 }
 
+
 export default function Home() {
   const [query, setQuery] = useState<string>("");
   const [results, setResults] = useState<Concept[]>([]);
   const [selected, setSelected] = useState<Concept[]>([]);
   const [isActive, setIsActive] = useState(false);
+  const [authorVal, setAuthorVal] = useState<string>("")
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -46,8 +48,8 @@ export default function Home() {
   };
 
   const searchRecommended = () => {
-    if (selected.length > 0) {
-      navigate("/results", { state: { conceptList: selected } });
+    if (selected.length > 0 || authorVal !== "") {
+      navigate("/results", { state: { conceptList: selected, authorId: authorVal } });
     }
   };
 
@@ -114,7 +116,7 @@ export default function Home() {
             </button>
             {/* Input para busqueda por autor*/}
             {isActive && (
-              <AuthorInput />
+              <AuthorInput value={authorVal} onChangeValue={setAuthorVal}/>
             )}
           </div>
         </div>

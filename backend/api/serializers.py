@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Author, MvIaConceptView, LatamAuthorView, Institution, Work
+from .models import Author, MvIaConceptView, MvLatamIaConceptView, Institution, Work
 class AuthorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Author
@@ -51,11 +51,11 @@ class MvIaConceptViewSerializer(serializers.ModelSerializer):
         ]
 
 # Serializer autocompletado de autores
-class LatamAuthorViewSerializer(serializers.ModelSerializer):
+class MvLatamIaConceptViewSerializer(serializers.ModelSerializer):
     class Meta:
-        model = LatamAuthorView
+        model = MvLatamIaConceptView
         fields = [
-            "id",
+            "author_id",
             "display_name"
         ]
 

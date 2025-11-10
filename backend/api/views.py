@@ -2,8 +2,8 @@ from django.shortcuts import render
 
 # Create your views here.
 from rest_framework import viewsets, generics, status
-from .models import Author, MvIaConceptView, LatamAuthorView, Institution, Work, WorkAuthorship
-from .serializers import AuthorSerializer, RecommendationListSerializer, GetRecommendationsRequestSerializer, MvIaConceptViewSerializer, LatamAuthorViewSerializer, InstitutionSerializer, WorkSerializer
+from .models import Author, MvIaConceptView, LatamAuthorView, Institution, Work, WorkAuthorship, MvLatamIaConceptView
+from .serializers import AuthorSerializer, RecommendationListSerializer, GetRecommendationsRequestSerializer, MvIaConceptViewSerializer, MvLatamIaConceptViewSerializer, InstitutionSerializer, WorkSerializer
 from recommender.hybrid_recommender import HybridRecommender
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -103,14 +103,14 @@ class ConceptAutocomplete(generics.ListAPIView):
             return MvIaConceptView.objects.filter(display_name__istartswith=query)[:10]  
         return MvIaConceptView.objects.none()
     
-class LatamAuthorAutocomplete(generics.ListAPIView):
-    serializer_class = LatamAuthorViewSerializer
+class MvLatamIaConceptViewAutocomplete(generics.ListAPIView):
+    serializer_class = MvLatamIaConceptViewSerializer
 
     def get_queryset(self):
         query = self.request.GET.get('search', '')
         if query:
-            return LatamAuthorView.objects.filter(display_name__istartswith=query)[:10]
-        return LatamAuthorView.objects.none()
+            return MvLatamIaConceptView.objects.filter(display_name__istartswith=query)[:10]
+        return MvLatamIaConceptView.objects.none()
 
 
 class RecommendationViewSet(APIView):
