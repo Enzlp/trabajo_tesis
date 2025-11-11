@@ -116,7 +116,7 @@ export default function Home() {
             </button>
             {/* Input para busqueda por autor*/}
             {isActive && (
-              <AuthorInput value={authorVal} onChangeValue={setAuthorVal}/>
+              <AuthorInput onChangeValue={setAuthorVal}/>
             )}
           </div>
         </div>

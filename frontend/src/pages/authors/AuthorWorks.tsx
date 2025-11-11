@@ -17,79 +17,50 @@ interface Work{
 }
 
 
+
 export default function AuthorWorks() {
   const { authorId } = useParams<{ authorId: string }>();
-  const [workList, setWorkList] = useState<Work[]>([]);
-  const [page, setPage] = useState(1);
-  const [nextCursors, setNextCursors] = useState<{ last_date: string | null, last_id: string | null }[]>([
-    { last_date: null, last_id: null },
-  ]);
-  const [hasMore, setHasMore] = useState(false);
+  const [allWorks, setAllWorks] = useState<Work[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
 
-  const limit = 10;
+  const itemsPerPage = 10;
 
-  const fetchPage = (pageNumber: number) => {
+  // Calcular paginación local
+  const totalPages = Math.ceil(allWorks.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentWorks = allWorks.slice(startIndex, endIndex);
+
+  // Fetch de todos los works (hasta 100) una sola vez
+  useEffect(() => {
     if (!authorId) return;
 
-    const cursor = nextCursors[pageNumber - 1];
-    const totalSent = (pageNumber - 1) * limit;
-
-    let apiUrl = `http://127.0.0.1:8000/api/authors/${authorId}/works/?limit=${limit}&total_sent=${totalSent}`;
-    if (cursor?.last_date && cursor?.last_id) {
-      apiUrl += `&last_date=${cursor.last_date}&last_id=${cursor.last_id}`;
-    }
-
     setLoading(true);
-    fetch(apiUrl)
+    fetch(`http://127.0.0.1:8000/api/authors/${authorId}/works/?limit=100`)
       .then((res) => {
         if (!res.ok) throw new Error(`Error HTTP: ${res.status}`);
         return res.json();
       })
-      .then((data: {
-        results: Work[];
-        next_last_date: string | null;
-        next_last_id: string | null;
-        has_more: boolean;
-      }) => {
-        setWorkList(data.results); // reemplaza si usas paginación de página a página
-
-        setHasMore(data.has_more);
-
-        if (data.next_last_date && data.next_last_id && nextCursors.length === pageNumber) {
-          setNextCursors((prev) => [
-            ...prev,
-            { last_date: data.next_last_date, last_id: data.next_last_id },
-          ]);
-        }
-
+      .then((data: { results: Work[]; count: number }) => {
+        setAllWorks(data.results);
         setLoading(false);
       })
       .catch((err) => {
         console.error("Error al obtener datos:", err);
         setLoading(false);
       });
-  };
-
-  useEffect(() => {
-    if (authorId) {
-      fetchPage(1);
-    }
   }, [authorId]);
 
   const handleNext = () => {
-    if (hasMore) {
-      const nextPage = page + 1;
-      setPage(nextPage);
-      fetchPage(nextPage);
+    if (currentPage < totalPages) {
+      setCurrentPage((prev) => prev + 1);
     }
   };
 
   const handlePrev = () => {
-    if (page > 1) {
-      const prevPage = page - 1;
-      setPage(prevPage);
-      fetchPage(prevPage);
+    if (currentPage > 1) {
+      setCurrentPage((prev) => prev - 1);
     }
   };
 
@@ -105,16 +76,31 @@ export default function AuthorWorks() {
     );
   }
 
-  if (!workList || workList.length === 0) {
-    return <p>No hay trabajos disponibles.</p>;
+  if (!allWorks || allWorks.length === 0) {
+    return (
+      <div className="flex flex-col border-2 border-gray-300 rounded-xl p-6 w-6/10">
+        <p className="text-center text-gray-500">No hay trabajos disponibles.</p>
+      </div>
+    );
+  }
+
+  const obtainId = (url: string) =>{
+    const u = new URL(url);
+    // El ID va después del último "/"
+    const path = u.pathname;                 // "/W123456"
+    const id = path.split("/").filter(Boolean).pop() || "";
+    return id;
   }
 
   return (
     <div className="flex flex-col border-2 border-gray-300 rounded-xl p-6 w-6/10">
-      <h3 className="px-4 mb-2 text-xl font-semibold">Trabajos</h3>
-      {workList.map((work: Work) => (
+      <h3 className="px-4 mb-2 text-xl font-bold">
+        Trabajos
+      </h3>
+      
+      {currentWorks.map((work: Work) => (
         <div
-          key={work.id}
+          key={obtainId(work.id)}
           className="p-4 hover:bg-gray-100 hover:cursor-pointer transition-colors duration-300"
           onClick={() => window.open(work.id, "_blank")}
         >
@@ -124,7 +110,7 @@ export default function AuthorWorks() {
           />
           <div>
             <p className="text-sm text-gray-400 font-semibold">
-              {work.publication_year} 
+              {work.publication_year}
             </p>
           </div>
           <div className="flex">
@@ -138,9 +124,9 @@ export default function AuthorWorks() {
       <div className="flex justify-center items-center mt-4 gap-4">
         <button
           onClick={handlePrev}
-          disabled={page === 1}
+          disabled={currentPage === 1}
           className={`px-4 py-2 rounded-lg ${
-            page === 1
+            currentPage === 1
               ? "bg-gray-200 text-gray-500 cursor-not-allowed"
               : "bg-gray-800 text-white hover:bg-gray-700 cursor-pointer"
           }`}
@@ -149,14 +135,14 @@ export default function AuthorWorks() {
         </button>
 
         <span className="text-sm font-medium text-gray-600">
-          Página {page}
+          Página {currentPage} de {totalPages}
         </span>
 
         <button
           onClick={handleNext}
-          disabled={!hasMore}
+          disabled={currentPage >= totalPages}
           className={`px-4 py-2 rounded-lg ${
-            !hasMore
+            currentPage >= totalPages
               ? "bg-gray-200 text-gray-500 cursor-not-allowed"
               : "bg-gray-800 text-white hover:bg-gray-700 cursor-pointer"
           }`}

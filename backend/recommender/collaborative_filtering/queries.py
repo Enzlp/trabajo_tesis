@@ -27,7 +27,6 @@ class CollaborativeFilteringQueries:
     def get_recommendations(cls, author_id, k = 20):
 
         models_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "files")
-        print(models_dir)
         emb_norm, author_to_idx, author_ids = cls.load_models(models_dir)
         if author_id not in author_to_idx:
             return []

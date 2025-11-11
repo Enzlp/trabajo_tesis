@@ -38,60 +38,41 @@ class InstitutionViewSet(viewsets.ReadOnlyModelViewSet):
 class AuthorWorksView(APIView):
     def get(self, request, author_id: str):
         author_prefix = "https://openalex.org/"
-        limit = int(request.query_params.get("limit", 10))
-        last_date = request.query_params.get("last_date")
-        last_id = request.query_params.get("last_id")
+        limit = int(request.query_params.get("limit", 100))
+        
+        
+        if limit <= 0:
+            return Response({
+                "results": [],
+                "next_last_date": None,
+                "next_last_id": None,
+                "has_more": False
+            })
+        
+        inner = (
+            Work.objects
+            .filter(authorships__author_id=f"{author_prefix}{author_id}")
+            .order_by("-publication_date", "-id")
+            .values("id")
+            .distinct()[:limit]
+        )
 
-        # 🔹 Máximo total de 100 trabajos
-        max_records = 100
+        qs = (
+            Work.objects
+            .filter(id__in=inner)
+            .order_by("-publication_date", "-id")
+        )
 
-        # 🔹 Query base: solo los trabajos del autor
-        qs = Work.objects.filter(authorships__author_id=f"{author_prefix}{author_id}")
-
-        # 🔹 Ordenar por fecha (más recientes primero)
-        qs = qs.order_by("-publication_date", "-id")
-
-        # 🔹 Paginación con cursor: continuar desde el último trabajo mostrado
-        if last_date and last_id:
-            qs = qs.filter(
-                Q(publication_date__lt=last_date)
-                | Q(publication_date=last_date, id__lt=last_id)
-            )
-
+                
         # 🔹 Traer limit + 1 para saber si hay más
-        works = list(qs[:limit + 1])
-
-        # 🔹 Quitar duplicados manualmente (por si hay algún cruce)
-        unique_works = []
-        seen_ids = set()
-        for w in works:
-            if w.id not in seen_ids:
-                seen_ids.add(w.id)
-                unique_works.append(w)
-        works = unique_works
-
-        # 🔹 Determinar si hay más resultados
-        has_more = len(works) > limit
-        works = works[:limit]
+        works = list(qs)
+        
 
         serializer = WorkSerializer(works, many=True)
-
-        total_sent = int(request.query_params.get("total_sent", 0))
-        reached_max = total_sent + len(works) >= max_records
-
-        # 🔹 Preparar el cursor para la siguiente página
-        next_last_date = None
-        next_last_id = None
-        if has_more and not reached_max and works:
-            last_work = works[-1]
-            next_last_date = last_work.publication_date
-            next_last_id = last_work.id
-
+        
         return Response({
             "results": serializer.data,
-            "next_last_date": next_last_date,
-            "next_last_id": next_last_id,
-            "has_more": has_more and not reached_max
+            "count": len(serializer.data),
         })
 # View autocompletado concepts
 class ConceptAutocomplete(generics.ListAPIView):

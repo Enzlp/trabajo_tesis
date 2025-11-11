@@ -45,7 +45,7 @@ export default function RecommendedCard({ recs, orderBy, loading }: RecommendedC
   }
 
   // Ordenar según orderBy
-  const sortedRecs = [...recs]; // hacer copia para no mutar props
+  const sortedRecs = [...(recs ?? [])];// hacer copia para no mutar props
   if (orderBy === 'sim') {
     sortedRecs.sort((a, b) => b.similarity_score - a.similarity_score);
   } else if (orderBy === 'cites') {

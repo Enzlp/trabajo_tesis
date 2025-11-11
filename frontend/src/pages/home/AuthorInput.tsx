@@ -6,12 +6,11 @@ interface Author {
 }
 
 type AuthorInputProps = {
-  value: string;
   onChangeValue: (nuevoValor: string) => void;
 };
 
 
-function AuthorInput({value, onChangeValue}: AuthorInputProps) {
+function AuthorInput({onChangeValue}: AuthorInputProps) {
   const [query, setQuery] = useState<string>("");
   const [results, setResults] = useState<Author[]>([]);
 

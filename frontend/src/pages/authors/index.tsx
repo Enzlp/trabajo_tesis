@@ -134,7 +134,7 @@ export default function Authors() {
             </p>
           </div>
         </div>
-        <AuthorWorks />
+        <AuthorWorks/>
       </div>
     </div>
   );
