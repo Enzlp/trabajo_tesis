@@ -119,6 +119,10 @@ export default function Authors() {
                 "N/A"
               )}
             </p>
+            <p className="text-base text-gray-700">
+              <span className="font-semibold">OpenAlex:</span>{" "}
+              <a href={authorInfo.id} className="text-blue-700 font-semibold">Ver en OpenAlex</a>
+            </p>
           </div>
 
           <hr className="my-2 border-gray-300" />
