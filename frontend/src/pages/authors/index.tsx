@@ -26,7 +26,7 @@ interface Institution {
 
 export default function Authors() {
 
-  const latamCountryCodes = {
+  const latamCountryCodes: { [key: string]: string } = {
     AR: "Argentina",
     BO: "Bolivia",
     BR: "Brazil",
