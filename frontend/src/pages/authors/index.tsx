@@ -21,13 +21,40 @@ interface Institution {
   id: string;
   display_name: string;
   homepage_url: string;
+  country_code: string;
 }
 
 export default function Authors() {
+
+  const latamCountryCodes = {
+    AR: "Argentina",
+    BO: "Bolivia",
+    BR: "Brazil",
+    CL: "Chile",
+    CO: "Colombia",
+    CR: "Costa Rica",
+    CU: "Cuba",
+    DO: "Dominican Republic",
+    EC: "Ecuador",
+    GT: "Guatemala",
+    HN: "Honduras",
+    MX: "Mexico",
+    NI: "Nicaragua",
+    PA: "Panama",
+    PE: "Peru",
+    PR: "Puerto Rico",
+    PY: "Paraguay",
+    SV: "El Salvador",
+    UY: "Uruguay",
+    VE: "Venezuela",
+  };
+
+
   const { authorId } = useParams<{ authorId: string }>();
   const [authorInfo, setAuthorInfo] = useState<Author>();
   const [institutionName, setInstitutionName] = useState<string>("");
   const [institutionUrl, setInstitutionUrl] = useState<string>("");
+  const [countryCode, setCountryCode] = useState<string>("");
 
   useEffect(() => {
     if (!authorId) return;
@@ -49,7 +76,8 @@ export default function Authors() {
 
               if (instData.length > 0) {
                 setInstitutionName(instData[0].display_name);
-				setInstitutionUrl(instData[0].homepage_url);
+				        setInstitutionUrl(instData[0].homepage_url);
+                setCountryCode(instData[0].country_code)
               } else {
                 setInstitutionName("No disponible");
               }
@@ -105,8 +133,13 @@ export default function Authors() {
             </p>
 
             <p className="text-base text-gray-700">
-              <span className="font-semibold">Institución:</span>{" "}
+              <span className="font-semibold">Institución: </span>
               <a href={institutionUrl} className="text-blue-700 font-semibold">{institutionName || "Cargando..."}</a>
+            </p>
+
+            <p className="text-base text-gray-700">
+              <span className="font-semibold">Pais: </span>
+              {latamCountryCodes[countryCode]}
             </p>
 
             <p className="text-base text-gray-700">

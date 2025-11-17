@@ -21,7 +21,8 @@ class InstitutionSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "display_name",
-            "homepage_url"
+            "homepage_url",
+            "country_code"
         ]
 
 class WorkSerializer(serializers.ModelSerializer):

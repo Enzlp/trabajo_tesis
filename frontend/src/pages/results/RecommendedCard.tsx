@@ -81,7 +81,7 @@ export default function RecommendedCard({ recs, orderBy, loading }: RecommendedC
               </p>
             */}
             <p className="text-gray-500 font-semibold">
-              Rank: #{startIndex + index + 1}
+              Rank #{startIndex + index + 1}
             </p>
           </div>
           <div className="flex justify-between text-gray-500 font-semibold">
