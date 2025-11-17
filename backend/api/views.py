@@ -117,10 +117,14 @@ class RecommendationViewSet(APIView):
         validated_data = input_serializer.validated_data
         concept_vector = validated_data.get('concept_vector') or None
         author_id = validated_data.get('author_id') or None
+        alpha = validated_data.get('alpha', 0.5)
+        beta = validated_data.get('beta', 0.5)
 
         recommendations = HybridRecommender().get_recommendations(
             user_input=concept_vector,
-            author_id=author_id
+            author_id=author_id,
+            alpha=alpha,
+            beta=beta
         )
 
         # recommendations = [(aid, score), ...]

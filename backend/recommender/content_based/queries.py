@@ -50,36 +50,45 @@ class ContentBasedQueries:
 	Metodo para obtener el listado de recomendaciones basados en el vector de conceptos de usuario ingresado
 	"""
 	@classmethod
-	def get_recommendations(cls, user_input, top_k = 20, similarity_threshold=0.2):
-		# Cargar modelos
-		models_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "files")
-		concept_to_index, svd_model, author_embeddings, author_ids = cls.load_models(models_dir)
-		n_concepts = len(concept_to_index)
+	def get_recommendations(cls, user_input, top_k=20, similarity_threshold=0.2):
+			# Cargar modelos
+			models_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "files")
+			concept_to_index, svd_model, author_embeddings, author_ids = cls.load_models(models_dir)
+			n_concepts = len(concept_to_index)
 
-		# Crear vector de usuario
-		user_vector = cls.create_user_vector(user_input, n_concepts, concept_to_index)
+			# Crear vector de usuario
+			user_vector = cls.create_user_vector(user_input, n_concepts, concept_to_index)
 
-		# Crear embeddings de usuario
-		user_embedding = svd_model.transform(user_vector.toarray())
+			# Crear embeddings de usuario
+			user_embedding = svd_model.transform(user_vector.toarray())
 
-		# Calcular similitudes
-		similarities = cosine_similarity(user_embedding, author_embeddings)[0]
+			# Calcular similitudes
+			similarities = cosine_similarity(user_embedding, author_embeddings)[0]
 
-		# filtrar autores por umbral
-		filtered_indices = np.where(similarities >= similarity_threshold)[0]
-		if len(filtered_indices) == 0:
-			return []  # No hay autores sobre el umbral
-		
-		# Obtener top_k sobre el umbral
-		top_indices = filtered_indices[np.argsort(similarities[filtered_indices])[-top_k:][::-1]]
+			# Filtrar por umbral
+			filtered_indices = np.where(similarities >= similarity_threshold)[0]
+			if len(filtered_indices) == 0:
+					return []
 
-		# Obtener IDs de autores
-		top_author_ids = author_ids[top_indices].tolist()
+			# Obtener top_k sobre los filtrados
+			top_indices = filtered_indices[np.argsort(similarities[filtered_indices])[-top_k:][::-1]]
+			top_author_ids = author_ids[top_indices].tolist()
 
-		recommendations = []
-		for idx, author_id in zip(top_indices, top_author_ids):
-			recommendations.append((author_id, float(similarities[idx])))
+			# --- MIN-MAX NORMALIZATION SOLO DE ESTOS TOP SCORES ---
+			raw_scores = [float(similarities[idx]) for idx in top_indices]
+			min_s, max_s = min(raw_scores), max(raw_scores)
 
+			if max_s - min_s < 1e-9:
+					# todos iguales → asignar 1.0
+					norm_scores = [1.0] * len(raw_scores)
+			else:
+					norm_scores = [(s - min_s) / (max_s - min_s) for s in raw_scores]
 
-		return recommendations
+			# Empaquetar resultado normalizado
+			recommendations = [
+					(author_id, norm_score)
+					for author_id, norm_score in zip(top_author_ids, norm_scores)
+			]
+
+			return recommendations
 

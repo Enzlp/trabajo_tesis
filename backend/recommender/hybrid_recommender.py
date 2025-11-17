@@ -1,10 +1,13 @@
 from recommender.content_based.queries import ContentBasedQueries
+from recommender.graph_based.queries import GraphBasedQueries
 from recommender.collaborative_filtering.queries import CollaborativeFilteringQueries
 
 class HybridRecommender:
     @staticmethod
-    def get_recommendations(user_input=None, author_id=None, k=30, alpha= 0.4, beta=0.6):
+    def get_recommendations(user_input=None, author_id=None, k=30, alpha= 0.5, beta=0.5):
+
         content = ContentBasedQueries()
+        graph = GraphBasedQueries()
         colab = CollaborativeFilteringQueries()
 
         # ------------------------------------------------------------------
@@ -14,8 +17,9 @@ class HybridRecommender:
         # Solo content-based
         if user_input and not author_id:
             return content.get_recommendations(user_input=user_input, top_k=k)
+        
 
-        # Solo collaborative filtering
+        # Solo graph based
         if author_id and not user_input:
             return colab.get_recommendations(author_id=author_id, k=k)
 
@@ -27,9 +31,9 @@ class HybridRecommender:
         # 2. Ambos disponibles: fusion híbrida
         # ------------------------------------------------------------------
         recs_1 = content.get_recommendations(user_input=user_input, top_k=k)
-        recs_2 = colab.get_recommendations(author_id=author_id, k=k)
+        recs_2 = colab.get_recommendations(author_id=author_id, top_n=k)
 
-        # Si el autor no tiene colaboraciones usa content based
+        # Si el autor no tiene colaboraciones en el grafo usa content based
         if len(recs_2) == 0:
             return recs_1
 

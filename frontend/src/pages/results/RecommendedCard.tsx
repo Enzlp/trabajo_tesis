@@ -67,7 +67,7 @@ export default function RecommendedCard({ recs, orderBy, loading }: RecommendedC
 
   return (
     <div className="flex flex-col items-end border-2 border-gray-300 rounded-xl p-6 bg-white min-h-screen">
-      {currentRecs.map((rec: Recommendation) => (
+      {currentRecs.map((rec: Recommendation, index: number) => (
         <div
           key={rec.author_id}
           className="w-full p-4 mb-4 rounded bg-indigo-50 flex flex-col cursor-pointer"
@@ -75,8 +75,13 @@ export default function RecommendedCard({ recs, orderBy, loading }: RecommendedC
         >
           <div className="flex justify-between items-center">
             <h3 className="font-bold text-2xl">{rec.display_name}</h3>
+            {/* 
+              <p className="text-gray-500 font-semibold">
+                Score de recomendacion: {rec.similarity_score.toFixed(2)}
+              </p>
+            */}
             <p className="text-gray-500 font-semibold">
-              Score de similitud: {rec.similarity_score.toFixed(2)}
+              Rank: #{startIndex + index + 1}
             </p>
           </div>
           <div className="flex justify-between text-gray-500 font-semibold">

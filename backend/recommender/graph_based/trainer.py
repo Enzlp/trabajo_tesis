@@ -42,7 +42,7 @@ def train_node2vec(files_dir):
 					verbose=True
 			)
     
-    npy_path = os.path.join(files_dir, "cf_author_embeddings.npy")
+    npy_path = os.path.join(files_dir, "gb_author_embeddings.npy")
     #txt_path = os.path.join(files_dir, "cf_author_embeddings.txt")
     
     np.save(npy_path, embeddings)

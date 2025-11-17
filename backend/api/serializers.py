@@ -100,6 +100,18 @@ class GetRecommendationsRequestSerializer(serializers.Serializer):
         help_text="ID del autor para recomendaciones colaborativas (opcional)"
     )
 
+    alpha = serializers.FloatField(
+        required=False,
+        default=0.5,
+        help_text="Peso del modelo content-based (0 a 1)"
+    )
+
+    beta = serializers.FloatField(
+        required=False,
+        default=0.5,
+        help_text="Peso del modelo collaborative filtering (0 a 1)"
+    )
+
     def validate(self, data):
         concept_vector = data.get("concept_vector", [])
         author_id = data.get("author_id", "").strip()
