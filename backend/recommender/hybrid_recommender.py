@@ -21,7 +21,7 @@ class HybridRecommender:
 
         # Solo graph based
         if author_id and not user_input:
-            return colab.get_recommendations(author_id=author_id, k=k)
+            return colab.get_recommendations(author_id=author_id, top_n=k)
 
         # Si no llega nada
         if not user_input and not author_id:
