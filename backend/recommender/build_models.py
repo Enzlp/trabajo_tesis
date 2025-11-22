@@ -11,49 +11,42 @@ django.setup()
 # Generamos los archivos para cada modelo de recomendacion
 from recommender.content_based.vector_builder import map_concepts
 from recommender.content_based.trainer import train_svd
-#from recommender.graph_based.graph_builder import obtain_authors, generate_edgelist
-from recommender.graph_based.trainer import train_node2vec
 
 # directorio de archivos
 files_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "files")
 
 # Archivo de mapeo de conceptos
-map_concepts(files_dir)
+#map_concepts(files_dir)
 
 # Reducir dimensionalidad SVD
-train_svd(files_dir)
+#train_svd(files_dir)
 
 
 # GRAPH
-# Obtener autores
-#author_ids, author_to_idx = obtain_authors()
-
-# Generar edgelist
-#generate_edgelist(files_dir, author_ids, author_to_idx)
-
-# Entrenar node2vec
-#train_node2vec(files_dir)
-
-# Limpieza de archivos
-#os.remove(os.path.join(files_dir, "coauthor_edges.edgelist"))
-#os.remove(os.path.join(files_dir, "coauthor_edges.edgelist.gz"))
-
-#from recommender.collaborative_filtering.matrix_builder import rating_matrix, matrix_factorization_implicit
-
-#rating_matrix_file = rating_matrix(files_dir)
-#P_file, Q_file = matrix_factorization_implicit(
-#    rating_matrix_file=rating_matrix_file,
-#    files_dir=files_dir,
-#    K=100,                # más factores latentes
-#    iterations=40,        # más iteraciones
-#    regularization=0.03,  # menor penalización
-#    alpha=15,             # (si el wrapper lo admite)
-#    use_gpu=False,        # True si tienes GPU
-#    num_threads=0
-#)
 
 
-#print(get_author_recommendations_fast('https://openalex.org/A5038897083',files_dir=files_dir))
-#print(get_author_recommendations_fast("https://openalex.org/A5015067771",files_dir=files_dir))
-#print(get_author_recommendations_fast("https://openalex.org/A5000506517",files_dir=files_dir))
-#print(get_author_recommendations_normalized('https://openalex.org/A5081806603',files_dir=files_dir))
+#authors_to_idx = obtain_authors_lightgcn()
+#generate_edgelist_lightgcn(files_dir, authors_to_idx)
+
+
+#edge_path = os.path.join(files_dir, "coauthor_edges.edgelist")
+
+#train_lightgcn_pyg(edge_path)
+
+from recommender.collaborative_filtering.matrix_builder import rating_matrix, matrix_factorization_implicit, matrix_factorization_weighted_bpr, matrix_factorization_als
+
+rating_matrix_file = rating_matrix(files_dir)
+
+P_file, Q_file = matrix_factorization_als(
+    rating_matrix_file=rating_matrix_file,
+    files_dir=files_dir,
+    K=250,                # tamaño grande para capturar estructura en grafo
+    iterations=50,        # suficiente para convergencia estable
+    alpha=20.0,           # peso moderado (colaboraciones repetidas valen más)
+    regularization=0.05,  # regularización más fuerte por alta dispersión
+    num_threads=0
+)
+
+
+
+

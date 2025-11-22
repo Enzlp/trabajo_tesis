@@ -1,5 +1,4 @@
 from recommender.content_based.queries import ContentBasedQueries
-from recommender.graph_based.queries import GraphBasedQueries
 from recommender.collaborative_filtering.queries import CollaborativeFilteringQueries
 
 class HybridRecommender:
@@ -7,7 +6,6 @@ class HybridRecommender:
     def get_recommendations(user_input=None, author_id=None, k=30, alpha= 0.5, beta=0.5):
 
         content = ContentBasedQueries()
-        graph = GraphBasedQueries()
         colab = CollaborativeFilteringQueries()
 
         # ------------------------------------------------------------------
@@ -19,7 +17,7 @@ class HybridRecommender:
             return content.get_recommendations(user_input=user_input, top_k=k)
         
 
-        # Solo graph based
+        # Solo colab based
         if author_id and not user_input:
             return colab.get_recommendations(author_id=author_id, top_n=k)
 

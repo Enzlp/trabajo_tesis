@@ -3,6 +3,7 @@ import os
 import numpy as np
 from scipy.sparse import lil_matrix, csr_matrix, save_npz, load_npz
 from implicit.als import AlternatingLeastSquares
+from implicit.bpr import BayesianPersonalizedRanking
 import pickle
 
 def rating_matrix(files_dir):
@@ -54,77 +55,148 @@ def rating_matrix(files_dir):
     return output_file
 
 
-def matrix_factorization_implicit(rating_matrix_file, files_dir, K=20, iterations=15, 
-                                   regularization=0.01, use_gpu=False, num_threads=0):
+def matrix_factorization_als(
+    rating_matrix_file, 
+    files_dir, 
+    K=50, 
+    iterations=20,
+    alpha=40.0, 
+    regularization=0.01, 
+    num_threads=0,
+    use_gpu=False
+):
     """
-    Factoriza la matriz R en P y Q usando ALS (Alternating Least Squares) con implicit.
+    ALS implícito (Hu, Koren, Volinsky 2008) para matriz autor x autor.
     
-    IMPORTANTE: implicit también usa Matrix Factorization, solo que con ALS en vez de SGD.
-    El resultado es el mismo: R ≈ P @ Q^T
+    Modelo:
+    - p_ij = 1 si r_ij > 0 (hay colaboración)
+    - p_ij = 0 si r_ij = 0 (información faltante, NO negativo)
+    - c_ij = 1 + alpha * r_ij (confianza)
+    
+    Optimiza: SUM c_ij * (p_ij - u_i^T v_j)^2 + regularización
     
     Args:
-        rating_matrix_file: ruta al archivo .npz con la matriz de ratings
-        files_dir: directorio para guardar P y Q
-        K: número de características latentes (factors en implicit)
-        iterations: número de iteraciones de ALS (equivalente a epochs en SGD)
-        regularization: parámetro de regularización (equivalente a beta en SGD)
-        use_gpu: si True, usa GPU (requiere CUDA y implicit[gpu])
-        num_threads: número de threads (0 = auto, usa todos los cores disponibles)
+        rating_matrix_file: archivo .npz con matriz autor x autor
+        files_dir: directorio para guardar resultados
+        K: número de factores latentes (50-200 recomendado)
+        iterations: iteraciones de ALS (15-30 recomendado)
+        alpha: peso de confianza (15-50, mayor = más peso a colaboraciones frecuentes)
+        regularization: término L2 (0.01-0.1)
+        num_threads: threads CPU (0 = automático)
+        use_gpu: usar GPU si está disponible
     
     Returns:
-        Tuplas con rutas a P y Q
+        tuple: (P_file, Q_file) con embeddings de autores
     """
-    # Cargar matriz dispersa
-    R = load_npz(rating_matrix_file)
-    n_users, n_items = R.shape
+    print("="*60)
+    print("ENTRENAMIENTO ALS - FEEDBACK IMPLÍCITO")
+    print("="*60)
     
-    print(f"Iniciando factorización con implicit (ALS): {n_users} usuarios, {n_items} ítems, {K} factores latentes")
-    print(f"Elementos no-cero: {R.nnz} ({100*R.nnz/(n_users*n_items):.4f}% de densidad)")
-    print(f"GPU: {use_gpu}, Threads: {num_threads if num_threads > 0 else 'auto'}")
+    # 1. Cargar matriz autor x autor
+    print("\n[1/5] Cargando matriz...")
+    R = load_npz(rating_matrix_file).tocsr()
+    n_authors = R.shape[0]
+    n_items = R.shape[1]
     
-    # Crear modelo ALS
+    print(f"  Dimensiones: {n_authors:,} autores x {n_items:,} autores")
+    print(f"  Colaboraciones: {R.nnz:,}")
+    print(f"  Densidad: {(R.nnz / (n_authors * n_items) * 100):.4f}%")
+    
+    # VALIDACIÓN: Verificar que es cuadrada y simétrica
+    if n_authors != n_items:
+        raise ValueError(f"Matriz debe ser cuadrada (autor x autor), recibida: {R.shape}")
+    
+    # 2. Preparar matriz de confianza
+    print(f"\n[2/5] Aplicando ponderación de confianza (alpha={alpha})...")
+    
+    # IMPORTANTE: NO transponer porque ya es autor x autor simétrica
+    # implicit espera (items x users), pero en nuestro caso items=users=autores
+    C = R.copy()
+    
+    # Aplicar transformación de confianza: c_ij = 1 + alpha * r_ij
+    # NOTA: No modificamos el .data directamente en C, dejamos que ALS lo haga
+    # implicit.als internamente aplica la transformación si usamos alpha
+    
+    print(f"  Valores únicos en matriz original: {np.unique(R.data)[:10]}")
+    print(f"  Min colaboraciones: {R.data.min()}, Max: {R.data.max()}")
+    
+    # 3. Configurar modelo ALS
+    print(f"\n[3/5] Configurando modelo ALS...")
+    print(f"  Factores latentes: {K}")
+    print(f"  Iteraciones: {iterations}")
+    print(f"  Regularización: {regularization}")
+    print(f"  Alpha (confianza): {alpha}")
+    print(f"  Threads: {num_threads if num_threads > 0 else 'auto'}")
+    print(f"  GPU: {'Sí' if use_gpu else 'No'}")
+    
     model = AlternatingLeastSquares(
         factors=K,
         regularization=regularization,
+        alpha=alpha,  # CRÍTICO: pasar alpha al modelo
         iterations=iterations,
-        use_native=True,      # Usa código C++ optimizado
-        use_cg=True,          # Usa Conjugate Gradient (más rápido)
-        use_gpu=use_gpu,
         num_threads=num_threads,
-        calculate_training_loss=True  # Para monitorear convergencia
+        use_gpu=use_gpu,
+        calculate_training_loss=True,
+        random_state=42
     )
     
-    # Entrenar (fit espera formato item_users, así que transponemos)
-    # implicit espera matriz user x item, tu matriz es autor x autor (simétrica)
-    print("Entrenando modelo...")
-    model.fit(R)
+    # 4. Entrenar modelo
+    print(f"\n[4/5] Entrenando modelo ALS...")
+    print("  (Esto puede tomar varios minutos...)")
     
-    # Extraer matrices P y Q
-    P = model.user_factors   # n_users x K
-    Q = model.item_factors   # n_items x K
+    # IMPORTANTE: Pasar la matriz original (autor x autor)
+    # implicit.als maneja internamente la confianza con alpha
+    model.fit(C.astype(np.float32), show_progress=True)
     
-    # Guardar P y Q como archivos NumPy (más simple que HDF5 para matrices pequeñas)
-    P_file = os.path.join(files_dir, "cf_P_matrix.npy")
-    Q_file = os.path.join(files_dir, "cf_Q_matrix.npy")
+    print("\n  ✅ Entrenamiento completado")
     
-    np.save(P_file, P)
-    np.save(Q_file, Q)
+    # 5. Extraer embeddings
+    print(f"\n[5/5] Extrayendo y guardando embeddings...")
     
-    print(f"Factorización completada.")
-    print(f"P guardada en: {P_file} (shape: {P.shape})")
-    print(f"Q guardada en: {Q_file} (shape: {Q.shape})")
+    # CRÍTICO: Como NO transponemos, los factores están correctamente asignados
+    # - user_factors = embeddings de autores (filas de la matriz)
+    # - item_factors = embeddings de autores (columnas, pero en matriz simétrica son iguales)
     
-    # Opcional: guardar el modelo completo para usar métodos de implicit
-    model_file = os.path.join(files_dir, "cf_implicit_model.pkl")
-    with open(model_file, 'wb') as f:
-        pickle.dump(model, f)
-    print(f"Modelo completo guardado en: {model_file}")
+    # Para matriz simétrica autor x autor:
+    # Podemos usar user_factors O item_factors (deberían ser similares)
+    # Usamos user_factors como representación principal
+    
+    P = model.user_factors  # Embeddings de autores (n_authors x K)
+    
+    # Para matriz simétrica, item_factors también representa autores
+    Q = model.item_factors  # También embeddings de autores (n_authors x K)
+    
+    print(f"  Shape P (user_factors): {P.shape}")
+    print(f"  Shape Q (item_factors): {Q.shape}")
+    
+    # Verificar que los embeddings son razonables
+    print(f"  Norma promedio P: {np.linalg.norm(P, axis=1).mean():.4f}")
+    print(f"  Norma promedio Q: {np.linalg.norm(Q, axis=1).mean():.4f}")
+    
+    # 6. Guardar resultados
+    P_file = os.path.join(files_dir, "cf_P_als.npy")
+    Q_file = os.path.join(files_dir, "cf_Q_als.npy")
+    model_file = os.path.join(files_dir, "cf_als_model.pkl")
+    
+    np.save(P_file, P.astype(np.float32))
+    np.save(Q_file, Q.astype(np.float32))
+    
+    with open(model_file, "wb") as f:
+        pickle.dump(model, f, protocol=pickle.HIGHEST_PROTOCOL)
+    
+    print(f"\n  ✅ Embeddings guardados:")
+    print(f"     P: {P_file}")
+    print(f"     Q: {Q_file}")
+    print(f"     Modelo: {model_file}")
+    
+    # 7. Estadísticas del modelo
+    print("\n" + "="*60)
+    print("RESUMEN DEL ENTRENAMIENTO")
+    print("="*60)
+    print(f"Autores: {n_authors:,}")
+    print(f"Factores latentes: {K}")
+    print(f"Parámetros totales: {(P.size + Q.size):,}")
+    print(f"Tamaño P en memoria: {P.nbytes / (1024**2):.2f} MB")
+    print(f"Tamaño Q en memoria: {Q.nbytes / (1024**2):.2f} MB")
     
     return P_file, Q_file
-
-
-
-
-
-
-

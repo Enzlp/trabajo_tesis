@@ -6,60 +6,66 @@ import pickle
 
 
 class CollaborativeFilteringQueries:
-	@classmethod
-	def get_recommendations(cls, author_id, top_n=10):
-		"""
-		Obtiene recomendaciones para un autor sin incluir al mismo autor.
-		"""
-		files_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "files")
-
-		# Cargar mappings
-		author_to_idx = np.load(os.path.join(files_dir, "cf_author_to_idx.npy"), 
-														allow_pickle=True).item()
-		idx_to_author = np.load(os.path.join(files_dir, "cf_idx_to_author.npy"), 
-														allow_pickle=True).item()
-		
-		if author_id not in author_to_idx:
-				print(f"Autor {author_id} no encontrado")
-				return []
-		
-		author_idx = author_to_idx[author_id]
-		
-		# Cargar modelo y matriz original
-		with open(os.path.join(files_dir, "cf_implicit_model.pkl"), 'rb') as f:
-				model = pickle.load(f)
-		
-		R_original = load_npz(os.path.join(files_dir, "cf_rating_matrix.npz"))
-		
-		# Obtener recomendaciones
-		indices, scores = model.recommend(
-				author_idx, 
-				R_original[author_idx],
-				N=top_n + 5,   # pedimos más por si hay que filtrar
-				filter_already_liked_items=True
-		)
-		
-		# Convertimos a (author_id, score)
-		recs = [
-				(idx_to_author[int(idx)], float(score))
-				for idx, score in zip(indices, scores)
-		]
-		
-		# Filtrar: remover el mismo autor si aparece
-		recs = [r for r in recs if r[0] != author_id]
-		
-		# --- MIN-MAX sobre los scores CF ---
-		score_vals = [s for _, s in recs]
-		min_s, max_s = min(score_vals), max(score_vals)
-
-		if max_s - min_s < 1e-9:
-			# todos iguales → asignar 1.0 a todos
-			recs_norm = [(aid, 1.0) for aid, _ in recs]
-		else:
-			recs_norm = [
-				(aid, (s - min_s) / (max_s - min_s))
-				for aid, s in recs
-			]
-
-		# devolver top_n con scores normalizados
-		return recs_norm[:top_n]
+    # Cache estático a nivel de clase
+    _cache = None
+    
+    @classmethod
+    def _initialize_cache(cls):
+        """Inicializa el cache una sola vez"""
+        if cls._cache is not None:
+            return
+        
+        files_dir = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 
+            "files"
+        )
+        
+        # Cargar todo una sola vez
+        cls._cache = {
+            'author_to_idx': np.load(
+                os.path.join(files_dir, "cf_author_to_idx.npy"), 
+                allow_pickle=True
+            ).item(),
+            'idx_to_author': np.load(
+                os.path.join(files_dir, "cf_idx_to_author.npy"), 
+                allow_pickle=True
+            ).item(),
+            'P': np.load(os.path.join(files_dir, "cf_P_als.npy")),
+            'Q': np.load(os.path.join(files_dir, "cf_Q_als.npy"))
+        }
+    
+    @classmethod
+    def get_recommendations(cls, author_id, top_n=10):
+        # Inicializar cache si es necesario
+        cls._initialize_cache()
+        
+        # Usar datos del cache
+        author_to_idx = cls._cache['author_to_idx']
+        idx_to_author = cls._cache['idx_to_author']
+        P = cls._cache['P']
+        Q = cls._cache['Q']
+        
+        if author_id not in author_to_idx:
+            print(f"Autor {author_id} no encontrado")
+            return []
+        
+        author_idx = author_to_idx[author_id]
+        
+        # Calcular scores (usar @ en lugar de np.dot)
+        predicted_scores = P[author_idx] @ Q.T
+        
+        # Excluir al mismo autor
+        predicted_scores[author_idx] = -np.inf
+        
+        # Top-K eficiente con argpartition O(n) en lugar de sort O(n log n)
+        k = min(top_n, len(predicted_scores) - 1)
+        top_indices = np.argpartition(-predicted_scores, k-1)[:k]
+        top_indices = top_indices[np.argsort(-predicted_scores[top_indices])]
+        
+        # Construir resultados (solo k conversiones, no 370k)
+        top_recs = [
+            (idx_to_author[idx], float(predicted_scores[idx]))
+            for idx in top_indices
+        ]
+        
+        return top_recs
