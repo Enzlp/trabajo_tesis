@@ -9,8 +9,7 @@ import django
 django.setup()
 
 # Generamos los archivos para cada modelo de recomendacion
-from recommender.content_based.vector_builder import map_concepts
-from recommender.content_based.trainer import train_svd
+from recommender.content_based.vector_builder import map_concepts, train_model
 
 # directorio de archivos
 files_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "files")
@@ -18,8 +17,7 @@ files_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "files")
 # Archivo de mapeo de conceptos
 map_concepts(files_dir)
 
-# Reducir dimensionalidad SVD
-train_svd(files_dir)
+
 
 
 # GRAPH
