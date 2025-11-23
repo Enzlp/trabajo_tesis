@@ -40,7 +40,7 @@ class ContentBasedQueries:
     def create_user_vector(user_concepts, n_concepts, concepts_ids):
         """Método para crear el vector de conceptos del usuario"""
         user_vector = lil_matrix((1, n_concepts), dtype=np.float32)
-        smoothing = 0.12
+        smoothing = 0.005
         user_vector[:] = smoothing
         
         for concept in user_concepts:
@@ -52,12 +52,12 @@ class ContentBasedQueries:
         return user_vector
     
     @classmethod
-    def get_recommendations(cls, user_input, top_k=20, similarity_threshold=0.2):
-        """Método para obtener el listado de recomendaciones basados en el vector de conceptos de usuario"""
+    def get_recommendations(cls, user_input):
+        """Retorna TODOS los autores ordenados por similitud (sin threshold ni top_k)."""
+        
         # Inicializar cache si es necesario
         cls._initialize_cache()
         
-        # Usar datos del cache
         concept_to_index = cls._cache['concept_to_index']
         svd_model = cls._cache['svd_model']
         author_embeddings = cls._cache['author_embeddings']
@@ -67,32 +67,32 @@ class ContentBasedQueries:
         # Crear vector de usuario
         user_vector = cls.create_user_vector(user_input, n_concepts, concept_to_index)
         
-        # Crear embeddings de usuario
+        # Obtener embedding del usuario
         user_embedding = svd_model.transform(user_vector.toarray())
         
-        # Calcular similitudes
+        # Obtener similitudes con TODOS los autores
         similarities = cosine_similarity(user_embedding, author_embeddings)[0]
         
-        # Filtrar por umbral
-        filtered_indices = np.where(similarities >= similarity_threshold)[0]
-        if len(filtered_indices) == 0:
-            return []
+        # Normalización Gaussiana (Z-Score)
+        mean = np.mean(similarities)
+        std = np.std(similarities, ddof=0)  # ddof=1 para corrección de muestra
         
-        # Top-K eficiente con argpartition
-        k = min(top_k, len(filtered_indices))
-        top_indices_local = np.argpartition(-similarities[filtered_indices], k-1)[:k]
-        top_indices_local = top_indices_local[np.argsort(-similarities[filtered_indices][top_indices_local])]
-        top_indices = filtered_indices[top_indices_local]
+        # Manejar caso donde std = 0 (todos los valores iguales)
+        if std == 0:
+            similarities_norm = np.zeros_like(similarities)
+        else:
+            similarities_norm = (similarities - mean) / std
         
-        # Obtener author IDs y scores
-        top_author_ids = author_ids[top_indices]
-        raw_scores = similarities[top_indices]
+        # Ordenar *todos* los índices por similitud normalizada descendente
+        sorted_indices = np.argsort(-similarities_norm)
         
+        sorted_author_ids = author_ids[sorted_indices]
+        sorted_scores = similarities_norm[sorted_indices]
         
-        # Empaquetar resultado
+        # Empaquetar resultados completos
         recommendations = [
-            (author_id, float(raw_score))
-            for author_id, raw_score in zip(top_author_ids, raw_scores)
+            (author_id, float(score))
+            for author_id, score in zip(sorted_author_ids, sorted_scores)
         ]
         
         return recommendations

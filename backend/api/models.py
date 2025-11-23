@@ -712,12 +712,15 @@ class LatamAuthorView(models.Model):
     id = models.TextField(primary_key=True)
     orcid = models.TextField()
     display_name = models.TextField()
+    country_code = models.TextField()
+    institution_name = models.TextField()
     works_count = models.IntegerField()
     cited_by_count = models.IntegerField()
 
     class Meta:
-        managed = False            # Django no crea ni elimina la vista
-        db_table = 'latam_authors'  # Esquema + nombre de la vista
+        managed = False
+        db_table = 'latam_authors'
+
 
 class MvIaConceptView(models.Model):
 	id = models.TextField(primary_key=True)

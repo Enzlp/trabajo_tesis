@@ -3,42 +3,35 @@ from recommender.collaborative_filtering.queries import CollaborativeFilteringQu
 
 class HybridRecommender:
     @staticmethod
-    def get_recommendations(user_input=None, author_id=None, k=30, alpha= 0.5, beta=0.5):
+    def get_recommendations(user_input=None, author_id=None, k=30, alpha=0.5, beta=0.5, order_by='sim', country_code=''):
 
         content = ContentBasedQueries()
         colab = CollaborativeFilteringQueries()
 
-        # ------------------------------------------------------------------
-        # 1. Manejo de casos incompletos
-        # ------------------------------------------------------------------
-
         # Solo content-based
         if user_input and not author_id:
-            return content.get_recommendations(user_input=user_input, top_k=k)
-        
+            recs = content.get_recommendations(user_input=user_input)  # <-- sin top_k
+            return recs[:k]
 
-        # Solo colab based
+        # Solo colab-based
         if author_id and not user_input:
-            return colab.get_recommendations(author_id=author_id, top_n=k)
+            recs = colab.get_recommendations(author_id=author_id)  # <-- sin top_n
+            return recs[:k]
 
-        # Si no llega nada
+        # Nada llega
         if not user_input and not author_id:
             return []
 
-        # ------------------------------------------------------------------
-        # 2. Ambos disponibles: fusion híbrida
-        # ------------------------------------------------------------------
-        recs_1 = content.get_recommendations(user_input=user_input, top_k=k)
-        recs_2 = colab.get_recommendations(author_id=author_id, top_n=k)
+        # HÍBRIDO CORRECTO -----------------------------------------
+        recs_1 = content.get_recommendations(user_input=user_input)     
+        recs_2 = colab.get_recommendations(author_id=author_id)          
 
-        # Si el autor no tiene colaboraciones en el grafo usa content based
         if len(recs_2) == 0:
-            return recs_1
+            return recs_1[:k]
 
         d1 = {aid: score for aid, score in recs_1}
         d2 = {aid: score for aid, score in recs_2}
 
-        # Unión de todos los autores recomendados por ambos sistemas
         all_authors = set(d1.keys()) | set(d2.keys())
 
         fused = []

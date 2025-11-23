@@ -1,5 +1,4 @@
-import { useNavigate, useParams } from "react-router-dom";
-import arrowLeft from '../../assets/arrow-left.svg';
+import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import loading_animation from "../../assets/loading_animation.svg";
 import user_id from '../../assets/user-id.svg';
@@ -95,8 +94,6 @@ export default function Authors() {
     return () => clearTimeout(timeoutId);
   }, [authorId]);
 
-  const navigate = useNavigate();
-  const goBack = () => navigate('/');
 
   if (!authorInfo) {
     return (
@@ -112,11 +109,6 @@ export default function Authors() {
 
   return (
     <div className="min-h-screen px-8 py-2 flex flex-col m-4">
-      <div className="flex items-center cursor-pointer rounded-2xl hover:bg-gray-200 w-fit p-2 my-2" onClick={goBack}>
-        <img src={arrowLeft} className="w-6 h-6" alt="Volver" />
-        <h1 className="font-semibold text-lg px-2">Inicio</h1>
-      </div>
-
       <div className="flex w-full gap-4">
         <div className="flex flex-col border-2 border-gray-300 rounded-xl p-6 w-4/10 h-fit">
           <div className="flex items-center gap-2">

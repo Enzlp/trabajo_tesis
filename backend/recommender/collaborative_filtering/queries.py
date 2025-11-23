@@ -33,9 +33,9 @@ class CollaborativeFilteringQueries:
             'P': np.load(os.path.join(files_dir, "cf_P_als.npy")),
             'Q': np.load(os.path.join(files_dir, "cf_Q_als.npy"))
         }
-    
+
     @classmethod
-    def get_recommendations(cls, author_id, top_n=10):
+    def get_recommendations(cls, author_id):
         # Inicializar cache si es necesario
         cls._initialize_cache()
         
@@ -51,21 +51,42 @@ class CollaborativeFilteringQueries:
         
         author_idx = author_to_idx[author_id]
         
-        # Calcular scores (usar @ en lugar de np.dot)
+        # Calcular scores
         predicted_scores = P[author_idx] @ Q.T
         
-        # Excluir al mismo autor
+        # Excluir al mismo autor (guardamos el valor original para no afectar la normalización)
+        original_self_score = predicted_scores[author_idx]
         predicted_scores[author_idx] = -np.inf
         
-        # Top-K eficiente con argpartition O(n) en lugar de sort O(n log n)
-        k = min(top_n, len(predicted_scores) - 1)
-        top_indices = np.argpartition(-predicted_scores, k-1)[:k]
-        top_indices = top_indices[np.argsort(-predicted_scores[top_indices])]
+        # Normalización Gaussiana (Z-Score)
+        # Importante: excluir -np.inf del cálculo de estadísticas
+        valid_scores = predicted_scores[predicted_scores != -np.inf]
         
-        # Construir resultados (solo k conversiones, no 370k)
-        top_recs = [
-            (idx_to_author[idx], float(predicted_scores[idx]))
-            for idx in top_indices
+        mean = np.mean(valid_scores)
+        std = np.std(valid_scores, ddof=0)  # ddof=1 para corrección de muestra
+        
+        # Manejar caso donde std = 0 (todos los valores iguales)
+        if std == 0:
+            predicted_scores_norm = np.where(
+                predicted_scores == -np.inf,
+                -np.inf,
+                0.0
+            )
+        else:
+            predicted_scores_norm = np.where(
+                predicted_scores == -np.inf,
+                -np.inf,
+                (predicted_scores - mean) / std
+            )
+        
+        # Ordenar todos los autores por score normalizado (mayor a menor)
+        sorted_indices = np.argsort(-predicted_scores_norm)
+        
+        # Construir toda la lista de recomendaciones
+        recommendations = [
+            (idx_to_author[idx], float(predicted_scores_norm[idx]))
+            for idx in sorted_indices
+            if predicted_scores_norm[idx] != -np.inf  # Excluir el autor mismo
         ]
         
-        return top_recs
+        return recommendations

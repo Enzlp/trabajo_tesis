@@ -62,9 +62,10 @@ export default function Home() {
             Busca recomendaciones de interés
           </h1>
           <p className="text-sm font-semibold text-gray-400 mb-4 text-start">
-            Busca y selecciona conceptos relacionados con inteligencia artificial
-            en la barra de búsqueda. Una vez elegidos, presiona "Recomendar" para
-            generar recomendaciones acordes a los conceptos seleccionados.
+          Puedes buscar conceptos relacionados con inteligencia artificial en la barra de búsqueda y seleccionarlos para construir tu perfil de intereses.
+          Si deseas obtener resultados personalizados para un investigador específico, activa la opción “Recomendar para Investigador” e ingresa tu nombre. 
+          Con esta información, el sistema combinará tus conceptos seleccionados con el perfil académico del investigador y generará recomendaciones de autores en Latinoamérica 
+          que estén más alineados con los temas que te interesan.
           </p>
 
           {/* Search bar */}
@@ -101,7 +102,7 @@ export default function Home() {
 
           {/* Busqueda por autor */}
           <div className="py-2 flex items-center gap-3 justify-start">
-            <span className="text-gray-700 font-semibold text-base">Recomendar por autor</span>
+            <span className="text-gray-700 font-semibold text-base">Recomendar para Investigador</span>
             <button
               onClick={() => setIsActive(!isActive)}
               className={`relative w-12 h-6 rounded-full transition-colors duration-200 cursor-pointer ${
