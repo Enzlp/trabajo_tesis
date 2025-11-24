@@ -99,7 +99,6 @@ class RecommendationViewSet(APIView):
     """
     
     def post(self, request):
-        print("🔥 PAYLOAD RECIBIDO:", request.data)
         input_serializer = GetRecommendationsRequestSerializer(data=request.data)
         input_serializer.is_valid(raise_exception=True)
         

@@ -17,7 +17,7 @@ def map_concepts(files_dir):
 		pickle.dump(concept_mapping, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 def train_model(files_dir):
-    # Mapeo de conceptos
+    # Cargar mapping de conceptos
     concept_mapping_path = os.path.join(files_dir, "concept_mapping.pkl")
     with open(concept_mapping_path, 'rb') as f:
         concept_to_index = pickle.load(f)
@@ -33,6 +33,9 @@ def train_model(files_dir):
     author_work_counts = []
 
     print(f"Procesando {n_authors} autores con {n_concepts} conceptos...")
+
+    # Para calcular score priori
+    concept_scores_accum = [[] for _ in range(n_concepts)]  # lista de listas
 
     for author_idx, author in enumerate(authors_data):
         author_ids.append(author.author_id)
@@ -50,22 +53,26 @@ def train_model(files_dir):
             concept_idx = concept_to_index[concept_id]
             score = float(concept_scores[i]) if i < len(concept_scores) else 1.0
             matrix[author_idx, concept_idx] = score
+            
+            # Acumular score para prior solo si existe
+            concept_scores_accum[concept_idx].append(score)
         
         if (author_idx + 1) % 1000 == 0:
             print(f"  Procesados {author_idx + 1}/{n_authors} autores...")
 
     # Convertir a CSR (más eficiente)
     matrix = matrix.tocsr()
-
     # Normalización L2 por filas
     matrix = normalize(matrix, norm='l2', axis=1)
 
-    # Guardar matriz normalizada
+    # Guardar matriz y metadata
     save_npz(os.path.join(files_dir, 'author_concept_matrix.npz'), matrix)
     np.save(os.path.join(files_dir, 'cb_author_ids.npy'), np.array(author_ids))
     np.save(os.path.join(files_dir, 'cb_author_work_counts.npy'), np.array(author_work_counts))
-    
-    # Calcular estadísticas
+
+
+
+    # Estadísticas
     work_counts_array = np.array(author_work_counts)
     metadata = {
         'n_concepts': n_concepts,
