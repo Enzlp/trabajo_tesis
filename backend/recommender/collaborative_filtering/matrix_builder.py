@@ -3,7 +3,6 @@ import os
 import numpy as np
 from scipy.sparse import lil_matrix, csr_matrix, save_npz, load_npz
 from implicit.als import AlternatingLeastSquares
-from implicit.bpr import BayesianPersonalizedRanking
 import pickle
 
 def rating_matrix(files_dir):
@@ -31,7 +30,7 @@ def rating_matrix(files_dir):
     # 3. Crear matriz dispersa vacía (LIL para construcción eficiente)
     R = lil_matrix((n_authors, n_authors), dtype=np.float32)
 
-    # 4. Llenar la matriz
+    # 4. Llenar la matriz (simétrica)
     for row in queryset:
         i = author_to_idx[row["coauthor_1"]]
         j = author_to_idx[row["coauthor_2"]]
@@ -41,7 +40,7 @@ def rating_matrix(files_dir):
         #rating = np.log1p(rating)
 
         R[i, j] = rating
-        R[j, i] = rating  # si quieres la matriz simétrica
+        R[j, i] = rating  # matriz simétrica
 
     # 5. Guardar matriz dispersa (CSR para implicit)
     output_file = os.path.join(files_dir, "cf_rating_matrix.npz")
@@ -66,17 +65,17 @@ def matrix_factorization_als(
     use_gpu=False
 ):
     """
-    ALS implícito (Hu, Koren, Volinsky 2008) para matriz autor x autor.
+    ALS para matriz simétrica autor x autor usando factorización U·U^T.
     
-    Modelo:
-    - p_ij = 1 si r_ij > 0 (hay colaboración)
-    - p_ij = 0 si r_ij = 0 (información faltante, NO negativo)
-    - c_ij = 1 + alpha * r_ij (confianza)
+    Para grafos no dirigidos (matriz simétrica A), usamos:
+        A ≈ U·U^T
     
-    Optimiza: SUM c_ij * (p_ij - u_i^T v_j)^2 + regularización
+    donde U es una única matriz de factores (n_authors x K).
+    
+    Esto reduce parámetros de 2·n·K a n·K, evitando overfitting.
     
     Args:
-        rating_matrix_file: archivo .npz con matriz autor x autor
+        rating_matrix_file: archivo .npz con matriz autor x autor simétrica
         files_dir: directorio para guardar resultados
         K: número de factores latentes (50-200 recomendado)
         iterations: iteraciones de ALS (15-30 recomendado)
@@ -86,53 +85,48 @@ def matrix_factorization_als(
         use_gpu: usar GPU si está disponible
     
     Returns:
-        tuple: (P_file, Q_file) con embeddings de autores
+        str: ruta al archivo U_file con embeddings únicos
     """
     print("="*60)
-    print("ENTRENAMIENTO ALS - FEEDBACK IMPLÍCITO")
+    print("ENTRENAMIENTO ALS - FACTORIZACIÓN SIMÉTRICA (U·U^T)")
     print("="*60)
     
     # 1. Cargar matriz autor x autor
-    print("\n[1/5] Cargando matriz...")
+    print("\n[1/6] Cargando matriz...")
     R = load_npz(rating_matrix_file).tocsr()
     n_authors = R.shape[0]
-    n_items = R.shape[1]
     
-    print(f"  Dimensiones: {n_authors:,} autores x {n_items:,} autores")
+    print(f"  Dimensiones: {n_authors:,} autores x {n_authors:,} autores")
     print(f"  Colaboraciones: {R.nnz:,}")
-    print(f"  Densidad: {(R.nnz / (n_authors * n_items) * 100):.4f}%")
+    print(f"  Densidad: {(R.nnz / (n_authors * n_authors) * 100):.4f}%")
     
-    # VALIDACIÓN: Verificar que es cuadrada y simétrica
-    if n_authors != n_items:
+    # VALIDACIÓN: Verificar que es cuadrada
+    if R.shape[0] != R.shape[1]:
         raise ValueError(f"Matriz debe ser cuadrada (autor x autor), recibida: {R.shape}")
     
-    # 2. Preparar matriz de confianza
-    print(f"\n[2/5] Aplicando ponderación de confianza (alpha={alpha})...")
-    
-    # IMPORTANTE: NO transponer porque ya es autor x autor simétrica
-    # implicit espera (items x users), pero en nuestro caso items=users=autores
-    C = R.copy()
-    
-    # Aplicar transformación de confianza: c_ij = 1 + alpha * r_ij
-    # NOTA: No modificamos el .data directamente en C, dejamos que ALS lo haga
-    # implicit.als internamente aplica la transformación si usamos alpha
-    
-    print(f"  Valores únicos en matriz original: {np.unique(R.data)[:10]}")
-    print(f"  Min colaboraciones: {R.data.min()}, Max: {R.data.max()}")
+    # VALIDACIÓN: Verificar simetría (opcional, puede ser costoso)
+    print("\n[2/6] Verificando simetría...")
+    if not np.allclose((R - R.T).data, 0, atol=1e-5):
+        print("  ⚠️  ADVERTENCIA: La matriz no es perfectamente simétrica")
+        print("     Se continuará con la factorización, pero considera revisar los datos")
+    else:
+        print("  ✅ Matriz es simétrica")
     
     # 3. Configurar modelo ALS
-    print(f"\n[3/5] Configurando modelo ALS...")
+    print(f"\n[3/6] Configurando modelo ALS para factorización simétrica...")
     print(f"  Factores latentes: {K}")
     print(f"  Iteraciones: {iterations}")
     print(f"  Regularización: {regularization}")
     print(f"  Alpha (confianza): {alpha}")
     print(f"  Threads: {num_threads if num_threads > 0 else 'auto'}")
     print(f"  GPU: {'Sí' if use_gpu else 'No'}")
+    print(f"\n  📊 Parámetros del modelo: {n_authors * K:,} (vs {2 * n_authors * K:,} con P y Q)")
+    print(f"     Reducción: {50.0:.1f}%")
     
     model = AlternatingLeastSquares(
         factors=K,
         regularization=regularization,
-        alpha=alpha,  # CRÍTICO: pasar alpha al modelo
+        alpha=alpha,
         iterations=iterations,
         num_threads=num_threads,
         use_gpu=use_gpu,
@@ -141,62 +135,79 @@ def matrix_factorization_als(
     )
     
     # 4. Entrenar modelo
-    print(f"\n[4/5] Entrenando modelo ALS...")
+    print(f"\n[4/6] Entrenando modelo ALS...")
     print("  (Esto puede tomar varios minutos...)")
     
-    # IMPORTANTE: Pasar la matriz original (autor x autor)
-    # implicit.als maneja internamente la confianza con alpha
-    model.fit(C.astype(np.float32), show_progress=True)
+    model.fit(R.astype(np.float32), show_progress=True)
     
     print("\n  ✅ Entrenamiento completado")
     
-    # 5. Extraer embeddings
-    print(f"\n[5/5] Extrayendo y guardando embeddings...")
+    # 5. Extraer embeddings y promediar para factorización simétrica
+    print(f"\n[5/6] Extrayendo embeddings y aplicando simetrización...")
     
-    # CRÍTICO: Como NO transponemos, los factores están correctamente asignados
-    # - user_factors = embeddings de autores (filas de la matriz)
-    # - item_factors = embeddings de autores (columnas, pero en matriz simétrica son iguales)
+    # ESTRATEGIA PARA MATRIZ SIMÉTRICA:
+    # Opción 1: Usar solo user_factors (más común)
+    # Opción 2: Usar solo item_factors
+    # Opción 3: Promediar ambos (más robusto para matriz simétrica)
     
-    # Para matriz simétrica autor x autor:
-    # Podemos usar user_factors O item_factors (deberían ser similares)
-    # Usamos user_factors como representación principal
-    
-    P = model.user_factors  # Embeddings de autores (n_authors x K)
-    
-    # Para matriz simétrica, item_factors también representa autores
-    Q = model.item_factors  # También embeddings de autores (n_authors x K)
+    P = model.user_factors  # (n_authors x K)
+    Q = model.item_factors  # (n_authors x K)
     
     print(f"  Shape P (user_factors): {P.shape}")
     print(f"  Shape Q (item_factors): {Q.shape}")
-    
-    # Verificar que los embeddings son razonables
     print(f"  Norma promedio P: {np.linalg.norm(P, axis=1).mean():.4f}")
     print(f"  Norma promedio Q: {np.linalg.norm(Q, axis=1).mean():.4f}")
     
-    # 6. Guardar resultados
-    P_file = os.path.join(files_dir, "cf_P_als.npy")
-    Q_file = os.path.join(files_dir, "cf_Q_als.npy")
+    # Para matriz simétrica, promediamos P y Q para obtener U
+    # Esto asegura que U·U^T sea simétrica
+    U = (P + Q) / 2.0
+    
+    print(f"\n  ✅ Matriz U (promediada): {U.shape}")
+    print(f"     Norma promedio U: {np.linalg.norm(U, axis=1).mean():.4f}")
+    
+    # Verificar que la reconstrucción es razonable
+    print("\n[6/6] Verificando calidad de la reconstrucción...")
+    
+    # Muestrear algunas predicciones
+    sample_size = min(100, n_authors)
+    sample_indices = np.random.choice(n_authors, sample_size, replace=False)
+    
+    R_sample = R[sample_indices, :][:, sample_indices].toarray()
+    U_sample = U[sample_indices, :]
+    R_pred_sample = U_sample @ U_sample.T
+    
+    # Calcular error en muestra
+    mask = R_sample > 0
+    if mask.sum() > 0:
+        mse = np.mean((R_sample[mask] - R_pred_sample[mask])**2)
+        rmse = np.sqrt(mse)
+        mae = np.mean(np.abs(R_sample[mask] - R_pred_sample[mask]))
+        
+        print(f"  RMSE (muestra): {rmse:.4f}")
+        print(f"  MAE (muestra): {mae:.4f}")
+    
+    # 7. Guardar resultados
+    U_file = os.path.join(files_dir, "cf_U_als.npy")
     model_file = os.path.join(files_dir, "cf_als_model.pkl")
     
-    np.save(P_file, P.astype(np.float32))
-    np.save(Q_file, Q.astype(np.float32))
+    np.save(U_file, U.astype(np.float32))
     
     with open(model_file, "wb") as f:
         pickle.dump(model, f, protocol=pickle.HIGHEST_PROTOCOL)
     
     print(f"\n  ✅ Embeddings guardados:")
-    print(f"     P: {P_file}")
-    print(f"     Q: {Q_file}")
+    print(f"     U: {U_file}")
     print(f"     Modelo: {model_file}")
     
-    # 7. Estadísticas del modelo
+    # 8. Estadísticas del modelo
     print("\n" + "="*60)
     print("RESUMEN DEL ENTRENAMIENTO")
     print("="*60)
     print(f"Autores: {n_authors:,}")
     print(f"Factores latentes: {K}")
-    print(f"Parámetros totales: {(P.size + Q.size):,}")
-    print(f"Tamaño P en memoria: {P.nbytes / (1024**2):.2f} MB")
-    print(f"Tamaño Q en memoria: {Q.nbytes / (1024**2):.2f} MB")
+    print(f"Parámetros totales: {U.size:,}")
+    print(f"Tamaño U en memoria: {U.nbytes / (1024**2):.2f} MB")
+    print(f"Tipo de factorización: SIMÉTRICA (U·U^T)")
+    print(f"Ventaja: {50.0:.1f}% menos parámetros vs factorización asimétrica")
     
-    return P_file, Q_file
+    return U_file

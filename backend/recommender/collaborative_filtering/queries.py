@@ -1,8 +1,5 @@
 import numpy as np
 import os
-from scipy.sparse import load_npz
-import h5py
-import pickle
 
 
 class CollaborativeFilteringQueries:
@@ -30,8 +27,7 @@ class CollaborativeFilteringQueries:
                 os.path.join(files_dir, "cf_idx_to_author.npy"), 
                 allow_pickle=True
             ).item(),
-            'P': np.load(os.path.join(files_dir, "cf_P_als.npy")),
-            'Q': np.load(os.path.join(files_dir, "cf_Q_als.npy"))
+            'U': np.load(os.path.join(files_dir, "cf_U_als.npy"))
         }
 
     @classmethod
@@ -42,8 +38,7 @@ class CollaborativeFilteringQueries:
         # Usar datos del cache
         author_to_idx = cls._cache['author_to_idx']
         idx_to_author = cls._cache['idx_to_author']
-        P = cls._cache['P']
-        Q = cls._cache['Q']
+        U = cls._cache['U']
         
         if author_id not in author_to_idx:
             print(f"Autor {author_id} no encontrado")
@@ -51,8 +46,9 @@ class CollaborativeFilteringQueries:
         
         author_idx = author_to_idx[author_id]
         
-        # Calcular scores
-        predicted_scores = P[author_idx] @ Q.T
+        # Calcular scores: U[author_idx] @ U^T
+        # Esto da la fila author_idx de la matriz reconstruida U·U^T
+        predicted_scores = U[author_idx] @ U.T
         
         # Excluir al mismo autor (guardamos el valor original para no afectar la normalización)
         original_self_score = predicted_scores[author_idx]
@@ -63,7 +59,7 @@ class CollaborativeFilteringQueries:
         valid_scores = predicted_scores[predicted_scores != -np.inf]
         
         mean = np.mean(valid_scores)
-        std = np.std(valid_scores, ddof=0)  # ddof=1 para corrección de muestra
+        std = np.std(valid_scores, ddof=0)  # ddof=0 para corrección de muestra
         
         # Manejar caso donde std = 0 (todos los valores iguales)
         if std == 0:
@@ -90,3 +86,4 @@ class CollaborativeFilteringQueries:
         ]
         
         return recommendations
+    

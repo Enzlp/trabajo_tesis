@@ -199,6 +199,41 @@ class RecommendationViewSet(APIView):
             # 🔹 AHORA SÍ aplicar el límite final después del reordenamiento
             recommendations = recommendations[:limit]
             top_author_ids = [aid for aid, _ in recommendations]
+
+            coauthors = [
+                "https://openalex.org/A5005086368",
+                "https://openalex.org/A5008947280",
+                "https://openalex.org/A5009848986",
+                "https://openalex.org/A5028518391",
+                "https://openalex.org/A5029029091",
+                "https://openalex.org/A5032980346",
+                "https://openalex.org/A5038461197",
+                "https://openalex.org/A5039952062",
+                "https://openalex.org/A5045627342",
+                "https://openalex.org/A5048880564",
+                "https://openalex.org/A5052753728",
+                "https://openalex.org/A5055271208",
+                "https://openalex.org/A5057709474",
+                "https://openalex.org/A5058860092",
+                "https://openalex.org/A5062341453",
+                "https://openalex.org/A5067643249",
+                "https://openalex.org/A5070765463",
+                "https://openalex.org/A5073118748",
+                "https://openalex.org/A5076957708",
+                "https://openalex.org/A5077538732",
+                "https://openalex.org/A5079691449",
+                "https://openalex.org/A5080909667",
+                "https://openalex.org/A5085139932",
+                "https://openalex.org/A5085675866",
+                "https://openalex.org/A5085689204",
+                "https://openalex.org/A5089831712",
+                "https://openalex.org/A5090471463",
+                "https://openalex.org/A5090684692",
+                "https://openalex.org/A5090884952"
+            ]
+            count_in_top = sum(1 for a in coauthors if a in top_author_ids)
+            print(count_in_top)
+
             scores_dict = {aid: score for aid, score in recommendations}
 
             # --- Query 2: conceptos (top-3 por autor) ---
