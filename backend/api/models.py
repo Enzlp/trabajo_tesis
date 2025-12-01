@@ -738,11 +738,14 @@ class MvLatamIaConceptView(models.Model):
     author_id = models.CharField(max_length=255, primary_key=True)
     display_name = models.CharField(max_length=500)
     concept_ids = ArrayField(models.CharField(max_length=255))
-    concept_scores = ArrayField(models.FloatField())
+    concept_tfs = ArrayField(models.FloatField())
+		#concept_scores = ArrayField(models.FloatField())
     
     class Meta:
         managed = False 
-        db_table = 'mv_latam_ia_authors_concepts'
+        db_table = 'mv_latam_ia_authors_concepts_tf'
+				#db_table = 'mv_latam_ia_authors_concepts'
+				
 
 class LatamIaCoauthorshipView(models.Model):
 	coauthor_1 = models.CharField()

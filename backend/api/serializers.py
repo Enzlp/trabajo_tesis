@@ -73,6 +73,8 @@ class RecommendationSerializer(serializers.Serializer):
     country_code = serializers.CharField(allow_null=True)
     institution_name = serializers.CharField(allow_null=True)
     similarity_score = serializers.FloatField()
+    z_score_cb = serializers.FloatField()
+    z_score_cf = serializers.FloatField()
     works_count = serializers.IntegerField()
     cited_by_count = serializers.IntegerField()
     top_concepts = ConceptScoreSerializer(many=True)

@@ -1,3 +1,5 @@
+# Contenido de recommender/collaborative_filtering/queries.py (Modificado)
+
 import numpy as np
 import os
 
@@ -47,43 +49,62 @@ class CollaborativeFilteringQueries:
         author_idx = author_to_idx[author_id]
         
         # Calcular scores: U[author_idx] @ U^T
-        # Esto da la fila author_idx de la matriz reconstruida U·U^T
         predicted_scores = U[author_idx] @ U.T
         
-        # Excluir al mismo autor (guardamos el valor original para no afectar la normalización)
-        original_self_score = predicted_scores[author_idx]
+        # Excluir al mismo autor
         predicted_scores[author_idx] = -np.inf
         
-        # Normalización Gaussiana (Z-Score)
-        # Importante: excluir -np.inf del cálculo de estadísticas
+        # 🔹 Normalización Gaussiana (Z-Score)
         valid_scores = predicted_scores[predicted_scores != -np.inf]
         
         mean = np.mean(valid_scores)
-        std = np.std(valid_scores, ddof=0)  # ddof=0 para corrección de muestra
+        std = np.std(valid_scores, ddof=0)
+        epsilon = 1e-8
+
+        z_scores = np.where(
+            predicted_scores == -np.inf,
+            -np.inf,
+            (predicted_scores - mean) / (std + epsilon)
+        )
         
-        # Manejar caso donde std = 0 (todos los valores iguales)
-        if std == 0:
+
+        # 🔹 Normalización Min-Max (Score de Fusión)
+        min_score = predicted_scores[predicted_scores != -np.inf].min()
+        max_score = predicted_scores.max()
+
+        
+        if (max_score - min_score) > epsilon:
+            # Solo normalizamos los scores válidos, manteniendo -np.inf
             predicted_scores_norm = np.where(
                 predicted_scores == -np.inf,
                 -np.inf,
-                0.0
+                (predicted_scores - min_score) / (max_score - min_score)
             )
         else:
             predicted_scores_norm = np.where(
                 predicted_scores == -np.inf,
                 -np.inf,
-                (predicted_scores - mean) / std
+                np.zeros_like(predicted_scores)
             )
+
+        #K_SCALER = 0.5
+        #valid_scores = predicted_scores[predicted_scores != -np.inf]
+        #center_point = np.median(valid_scores)
+        #predicted_scores_centered = predicted_scores - center_point
+        #predicted_scores_norm = np.where(
+        #predicted_scores == -np.inf,
+        #    -np.inf,
+        #    1.0 / (1.0 + np.exp(-K_SCALER * predicted_scores_centered))
+        #)
         
-        # Ordenar todos los autores por score normalizado (mayor a menor)
+        # Ordenar todos los autores por score normalizado min-max (mayor a menor)
         sorted_indices = np.argsort(-predicted_scores_norm)
         
-        # Construir toda la lista de recomendaciones
+        # Construir toda la lista de recomendaciones: (author_id, score_min_max, z_score)
         recommendations = [
-            (idx_to_author[idx], float(predicted_scores_norm[idx]))
+            (idx_to_author[idx], float(predicted_scores_norm[idx]), float(z_scores[idx]))
             for idx in sorted_indices
-            if predicted_scores_norm[idx] != -np.inf  # Excluir el autor mismo
+            if predicted_scores_norm[idx] != -np.inf # Excluir el autor mismo
         ]
         
         return recommendations
-    

@@ -15,6 +15,8 @@ type Recommendation = {
   country_code:string;
   institution_name:string;
   similarity_score: number;
+  z_score_cb: number;
+  z_score_cf: number;
   works_count: number;
   cited_by_count: number;
   top_concepts: ConceptScore[];
@@ -99,17 +101,18 @@ export default function RecommendedCard({ recs, loading }: RecommendedCardProps)
         >
           <div className="flex justify-between items-center">
             <h3 className="font-bold text-2xl">{rec.display_name}</h3>
-            <p className="text-gray-500 font-semibold">
-            <span className="font-bold">{rec.institution_name}</span> - {latamCountryCodes[rec.country_code]}
+            <p className="text-gray-500 font-semibold text-sm xl:text-base">
+            <span className="font-bold ">{rec.institution_name}</span> - {latamCountryCodes[rec.country_code]}
             </p>
           </div>
           <div className="flex justify-between text-gray-500 font-semibold">
             <div className="flex flex-col">
-              <p>N° de trabajos: {rec.works_count}</p>
-              <p>N° de citas: {rec.cited_by_count}</p>
+              <p className="text-sm xl:text-base">N° de trabajos: {rec.works_count} | N° de citas: {rec.cited_by_count}</p>
+              <p className="text-sm xl:text-base">Z-score CB: {rec.z_score_cb === 0 ? '-' : `${rec.z_score_cb.toFixed(2)}σ`}</p>
+              <p className="text-sm xl:text-base">Z-score CF: {rec.z_score_cf === 0 ? '-' : `${rec.z_score_cf.toFixed(2)}σ`}</p>
             </div>
             <div className="flex flex-col">
-              <p className="text-end">
+              <p className="text-end text-sm xl:text-base">
                 ORCID:{" "}
                 {rec.orcid ? (
                   <a
@@ -128,7 +131,7 @@ export default function RecommendedCard({ recs, loading }: RecommendedCardProps)
                 {rec.top_concepts.map((concept: ConceptScore)=>(
                     <div
                       key={concept.concept_id}
-                      className="flex items-center bg-emerald-200 text-emerald-800 px-2 mt-1  rounded-full"
+                      className="flex items-center bg-emerald-200 text-emerald-800 px-2 mt-1  rounded-full text-sm xl:text-base"
                       
                     >
                       {concept.display_name}

@@ -7,6 +7,12 @@ from .serializers import AuthorSerializer, RecommendationListSerializer, GetReco
 from recommender.hybrid_recommender import HybridRecommender
 from rest_framework.views import APIView
 from rest_framework.response import Response
+import math
+from recommender.content_based.queries import ContentBasedQueries
+
+from django.db.models import Q
+from django.db.models import Func, Value
+from django.db.models.fields import CharField
 
 class AuthorViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Author.objects.all()
@@ -73,24 +79,91 @@ class AuthorWorksView(APIView):
             "results": serializer.data,
             "count": len(serializer.data),
         })
-# View autocompletado concepts
+# Views autocompletado
+
+import re
+
+def generar_patron_acronimo(query):
+    """
+    Convierte una cadena corta (ej: 'nlp') en un patrón de regex
+    para buscar las iniciales de cada palabra (ej: 'N.*L.*P.*').
+    """
+    # 1. Asegurarse de que la búsqueda sea insensible a mayúsculas
+    query = query.upper()
+    
+    # 2. Insertar '.*' (cero o más caracteres) entre cada letra.
+    # Esto busca: [Inicial1] seguido de cualquier cosa, luego [Inicial2], etc.
+    # Ejemplo: 'N.*L.*P.*'
+    pattern = '.*'.join(list(query))
+    
+    # 3. Añadir el marcador de inicio de cadena (si quieres que solo busque al inicio del concepto)
+    # o solo usar el patrón. En este caso, buscaremos el acrónimo dentro de la cadena.
+    
+    return pattern
+
 class ConceptAutocomplete(generics.ListAPIView):
     serializer_class = MvIaConceptViewSerializer
 
     def get_queryset(self):
-        query = self.request.GET.get('search', '')  # obtiene ?search=...
-        if query:
-            return MvIaConceptView.objects.filter(display_name__istartswith=query)[:10]  
-        return MvIaConceptView.objects.none()
-    
+        query = self.request.GET.get('search', '')
+        
+        if not query:
+            return MvIaConceptView.objects.none()
+
+        # --- A. Búsqueda por Acrónimo (NLP -> N.*L.*P.*) ---
+        acronym_pattern = generar_patron_acronimo(query)
+
+        # 1. Filtro normal (ej: 'Natu' trae 'Natural Language Processing')
+        filtro_normal = Q(display_name__istartswith=query)
+        
+        # 2. Filtro acrónimo (ej: 'nlp' trae 'Natural Language Processing' usando regex)
+        # ^ indica el inicio de la cadena, \y indica el límite de palabra.
+        # Esto busca las iniciales de las palabras del concepto.
+        filtro_acronimo = Q(display_name__iregex=r'\y' + acronym_pattern)
+
+        # 3. Combinar los filtros con OR (|)
+        queryset = MvIaConceptView.objects.filter(
+            filtro_normal | filtro_acronimo
+        ).distinct() # Usamos distinct para evitar duplicados si la búsqueda coincide en ambos filtros
+        
+        return queryset[:10]
+
+DE_ACENTUADO = 'áéíóúÁÉÍÓÚñÑ'
+A_NORMAL = 'aeiouAEIOUnN'
+
 class MvLatamIaConceptViewAutocomplete(generics.ListAPIView):
     serializer_class = MvLatamIaConceptViewSerializer
 
     def get_queryset(self):
         query = self.request.GET.get('search', '')
-        if query:
-            return MvLatamIaConceptView.objects.filter(display_name__istartswith=query)[:10]
-        return MvLatamIaConceptView.objects.none()
+        
+        if not query:
+            return MvLatamIaConceptView.objects.none()
+
+        # 1. Normalizar la columna de la base de datos (Sin cambios)
+        columna_normalizada = Func(
+            'display_name',
+            Value(DE_ACENTUADO),
+            Value(A_NORMAL),
+            function='TRANSLATE',
+            output_field=CharField()
+        )
+
+        # 2. Normalizar el término de búsqueda del usuario (Sin cambios)
+        # Ejemplo: Si query es 'Hernández', termino_limpio es 'Hernandez'.
+        termino_limpio = query.translate(str.maketrans(DE_ACENTUADO, A_NORMAL))
+        
+        # 3. Construir el filtro para buscar en cualquier parte (icontains)
+        # Esto permite buscar por apellido o por cualquier palabra del concepto
+        
+        return MvLatamIaConceptView.objects.annotate(
+            # Anotamos el campo limpiado
+            display_name_normalized=columna_normalizada
+        ).filter(
+            # CAMBIO CLAVE AQUÍ: Usamos __icontains para buscar en cualquier parte del texto.
+            # Esto traduce a SQL: ...WHERE display_name_normalized ILIKE '%termino_limpio%'
+            display_name_normalized__icontains=termino_limpio
+        )[:10]
 
 class RecommendationViewSet(APIView):
     """
@@ -110,10 +183,16 @@ class RecommendationViewSet(APIView):
         limit = validated_data.get('limit', 50)
         country_code = validated_data.get('country_code', '')
         order_by = validated_data.get('order_by', 'sim')
-        
+
+        # Inicializar el caché para obtener el mapeo de conceptos y el vector IDF
+        ContentBasedQueries._initialize_cache()
+        concept_to_index = ContentBasedQueries._cache['concept_to_index']
+        idf_vector = ContentBasedQueries._cache['idf_vector']
+
         # 🔹 Traer más candidatos si hay filtro de país (para compensar el filtrado)
         candidate_limit = 20000 if country_code else limit
         
+        # 💡 HybridRecommender devuelve (aid, final_score_híbrido, z_score_cb, z_score_colab)
         recommendations = HybridRecommender().get_recommendations(
             user_input=concept_vector,
             author_id=author_id,
@@ -128,8 +207,12 @@ class RecommendationViewSet(APIView):
                 'recommendations': []
             }
         else:
-            top_author_ids = [aid for aid, _ in recommendations]
-            
+            # 💡 CAMBIO: Extraer los 4 valores de la tupla
+            top_author_ids = [aid for aid, _, _, _ in recommendations]
+            scores_dict_hybrid = {aid: score for aid, score, _, _ in recommendations}
+            z_scores_dict_cb = {aid: z_score for aid, _, z_score, _ in recommendations}
+            z_scores_dict_colab = {aid: z_score for aid, _, _, z_score in recommendations}
+
             # 🔹 FILTRADO POR PAÍS (si se especifica)
             if country_code:
                 # Query eficiente: solo traer IDs de autores del país
@@ -141,8 +224,10 @@ class RecommendationViewSet(APIView):
                 )
                 
                 # Filtrar recomendaciones manteniendo el orden y score
+                # 💡 CAMBIO: El filtro debe mantener la tupla de 4 elementos
                 recommendations = [
-                    (aid, score) for aid, score in recommendations 
+                    (aid, score, z_score_cb, z_score_colab) 
+                    for aid, score, z_score_cb, z_score_colab in recommendations 
                     if aid in valid_author_ids
                 ]
                 
@@ -155,10 +240,9 @@ class RecommendationViewSet(APIView):
                     return Response(output_serializer.data, status=status.HTTP_200_OK)
             
             # 🔹 Actualizar top_author_ids DESPUÉS del filtro
-            top_author_ids = [aid for aid, _ in recommendations]
+            top_author_ids = [aid for aid, _, _, _ in recommendations]
             
             # --- Query 1: autores (traer métricas para reordenamiento) ---
-            # 🔹 IMPORTANTE: Traer TODOS los autores candidatos antes de reordenar
             authors_dict = LatamAuthorView.objects.filter(
                 id__in=top_author_ids
             ).only(
@@ -168,73 +252,44 @@ class RecommendationViewSet(APIView):
 
             # 🔹 REORDENAMIENTO POR MÉTRICAS (si se especifica)
             if order_by == 'works':
-                # Reordenar por works_count descendente, manteniendo similarity como desempate
+                # Reordenar por works_count descendente, manteniendo similarity (híbrida) como desempate
                 recommendations = sorted(
                     recommendations,
                     key=lambda x: (
                         -(authors_dict.get(x[0]).works_count or 0) if authors_dict.get(x[0]) else 0,
-                        -x[1]
+                        -x[1] # x[1] es el final_score_híbrido
                     )
                 )
             elif order_by == 'cites':
-                # Reordenar por cited_by_count descendente, manteniendo similarity como desempate
+                # Reordenar por cited_by_count descendente, manteniendo similarity (híbrida) como desempate
                 recommendations = sorted(
                     recommendations,
                     key=lambda x: (
                         -(authors_dict.get(x[0]).cited_by_count or 0) if authors_dict.get(x[0]) else 0,
-                        -x[1]
+                        -x[1] # x[1] es el final_score_híbrido
                     )
                 )
 
             if order_by in ['works', 'cites']:
                 print(f"\n🔍 Top 10 después de ordenar por {order_by}:")
-                for i, (aid, score) in enumerate(recommendations[:10]):
+                # 💡 CAMBIO: Desempaquetar los 4 valores para imprimir
+                for i, (aid, score, z_score_cb, z_score_colab) in enumerate(recommendations[:10]):
                     author = authors_dict.get(aid)
                     if author:
                         print(f"{i+1}. {author.display_name}: "
                             f"works={author.works_count}, "
                             f"cites={author.cited_by_count}, "
-                            f"sim={score:.4f}")
+                            f"sim={score:.4f}, z_cb={z_score_cb:.4f}, z_colab={z_score_colab:.4f}")
             
             # 🔹 AHORA SÍ aplicar el límite final después del reordenamiento
             recommendations = recommendations[:limit]
-            top_author_ids = [aid for aid, _ in recommendations]
+            
+            # 💡 CAMBIO: Re-crear los diccionarios de scores con los autores finales
+            top_author_ids = [aid for aid, _, _, _ in recommendations]
+            scores_dict_hybrid = {aid: score for aid, score, _, _ in recommendations}
+            z_scores_dict_cb = {aid: z_score for aid, _, z_score, _ in recommendations}
+            z_scores_dict_colab = {aid: z_score for aid, _, _, z_score in recommendations}
 
-            coauthors = [
-                "https://openalex.org/A5005086368",
-                "https://openalex.org/A5008947280",
-                "https://openalex.org/A5009848986",
-                "https://openalex.org/A5028518391",
-                "https://openalex.org/A5029029091",
-                "https://openalex.org/A5032980346",
-                "https://openalex.org/A5038461197",
-                "https://openalex.org/A5039952062",
-                "https://openalex.org/A5045627342",
-                "https://openalex.org/A5048880564",
-                "https://openalex.org/A5052753728",
-                "https://openalex.org/A5055271208",
-                "https://openalex.org/A5057709474",
-                "https://openalex.org/A5058860092",
-                "https://openalex.org/A5062341453",
-                "https://openalex.org/A5067643249",
-                "https://openalex.org/A5070765463",
-                "https://openalex.org/A5073118748",
-                "https://openalex.org/A5076957708",
-                "https://openalex.org/A5077538732",
-                "https://openalex.org/A5079691449",
-                "https://openalex.org/A5080909667",
-                "https://openalex.org/A5085139932",
-                "https://openalex.org/A5085675866",
-                "https://openalex.org/A5085689204",
-                "https://openalex.org/A5089831712",
-                "https://openalex.org/A5090471463",
-                "https://openalex.org/A5090684692",
-                "https://openalex.org/A5090884952"
-            ]
-            count_in_top = sum(1 for a in coauthors if a in top_author_ids)
-            print(count_in_top)
-
-            scores_dict = {aid: score for aid, score in recommendations}
 
             # --- Query 2: conceptos (top-3 por autor) ---
             concept_rows = MvLatamIaConceptView.objects.filter(
@@ -244,10 +299,39 @@ class RecommendationViewSet(APIView):
             # Extraer todos los concept_ids que aparecerán en el top 3
             all_concept_ids = set()
             top_concepts_temp = {}
-
+            
+            # 🆕 INICIO DEL SNIPPET DE TF-IDF SUBLINEAL
             for row in concept_rows:
+                
+                raw_pairs = zip(row.concept_ids, row.concept_tfs)
+                
+                # Lista para almacenar (concept_id, tfidf_score)
+                tfidf_scores = []
+                
+                # Calcular TF-IDF Sublineal para ordenar los conceptos (Mide especialización)
+                for concept_id, raw_tf in raw_pairs:
+                    if concept_id not in concept_to_index:
+                        continue
+                    
+                    concept_idx = concept_to_index[concept_id]
+                    
+                    # 1. TF Sublineal: 1 + log(TF)
+                    tf_value = float(raw_tf)
+                    if tf_value > 0:
+                        tf_sublineal = 1 + math.log(tf_value)
+                    else:
+                        tf_sublineal = 0.0
+                        
+                    # 2. Aplicar IDF: TF_sublineal * IDF
+                    idf_w = idf_vector[concept_idx]
+                    tfidf_score = tf_sublineal * idf_w
+                    
+                    if tfidf_score > 0:
+                        tfidf_scores.append((concept_id, tfidf_score))
+
+                # Ordenar por el score TF-IDF y tomar el top 3
                 pairs = sorted(
-                    zip(row.concept_ids, row.concept_scores),
+                    tfidf_scores,
                     key=lambda x: x[1],
                     reverse=True
                 )[:3]  # top 3
@@ -284,7 +368,9 @@ class RecommendationViewSet(APIView):
                         "display_name": author.display_name,
                         "country_code": author.country_code,
                         "institution_name": author.institution_name,
-                        "similarity_score": float(scores_dict[aid]),
+                        "similarity_score": float(scores_dict_hybrid[aid]), # Score Híbrido (Min-Max ponderado)
+                        "z_score_cb": float(z_scores_dict_cb[aid]),         # Z-Score del Content-Based
+                        "z_score_cf": float(z_scores_dict_colab[aid]),   # Z-Score del Collaborative Filtering
                         "works_count": author.works_count or 0,
                         "cited_by_count": author.cited_by_count or 0,
                         "top_concepts": concepts_dict.get(aid, [])

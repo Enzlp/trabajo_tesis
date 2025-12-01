@@ -41,7 +41,7 @@ export default function MetricsCard({peso1,peso2, setPeso1, setPeso2, fetchFunct
         </colgroup>
         <tbody>
           <tr>
-            <td>Peso modelo cb:</td>
+            <td>Peso modelo CB:</td>
             <td>
               <input 
                 type="number"
@@ -55,7 +55,7 @@ export default function MetricsCard({peso1,peso2, setPeso1, setPeso2, fetchFunct
             </td>
           </tr>
           <tr>
-            <td>Peso modelo cf:</td>
+            <td>Peso modelo CF:</td>
             <td>
               <input 
                 type="number"
