@@ -23,7 +23,7 @@ export default function Home() {
     }
 
     const timeoutId = setTimeout(() => {
-      fetch(`http://127.0.0.1:8000/api/concept/?search=${query}`)
+      fetch(`https://collabrecommender.dcc.uchile.cl/api/concept/?search=${query}`)
         .then((res) => res.json())
         .then((data: Concept[]) => {
           const filtered = data.filter(

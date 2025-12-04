@@ -29,7 +29,7 @@ function AuthorInput({onChangeValue}: AuthorInputProps) {
     }
 
     const timeoutId = setTimeout(() => {
-      fetch(`http://127.0.0.1:8000/api/authorsearch/?search=${query}`)
+      fetch(`https://collabrecommender.dcc.uchile.cl/api/authorsearch/?search=${query}`)
         .then((res) => res.json())
         .then((data: Author[]) => setResults(data))
         .catch((err) => console.error(err));

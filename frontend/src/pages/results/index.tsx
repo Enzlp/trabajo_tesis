@@ -88,7 +88,7 @@ export default function Results() {
 					payload.author_id = aId;
 				}
 
-				const response = await fetch('http://127.0.0.1:8000/api/recommendation/', {
+				const response = await fetch('https://collabrecommender.dcc.uchile.cl/api/recommendation/', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify(payload),
@@ -144,7 +144,7 @@ export default function Results() {
 				payload.beta = peso2;
 			}
 
-			const response = await fetch('http://127.0.0.1:8000/api/recommendation/', {
+			const response = await fetch('https://collabrecommender.dcc.uchile.cl/api/recommendation/', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(payload),
@@ -184,7 +184,7 @@ export default function Results() {
 				payload.country_code = currentCountry;
 			}
 
-			const response = await fetch('http://127.0.0.1:8000/api/recommendation/', {
+			const response = await fetch('https://collabrecommender.dcc.uchile.cl/api/recommendation/', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(payload),

@@ -37,7 +37,7 @@ export default function AuthorWorks() {
     if (!authorId) return;
 
     setLoading(true);
-    fetch(`http://127.0.0.1:8000/api/authors/${authorId}/works/?limit=100`)
+    fetch(`https://collabrecommender.dcc.uchile.cl/api/authors/${authorId}/works/?limit=100`)
       .then((res) => {
         if (!res.ok) throw new Error(`Error HTTP: ${res.status}`);
         return res.json();

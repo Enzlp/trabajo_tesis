@@ -29,7 +29,12 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-dev-key-change-this')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    'collabrecommender.dcc.uchile.cl',
+    'www.collabrecommender.dcc.uchile.cl',
+]
 
 CORS_ALLOW_ALL_ORIGINS = True
 

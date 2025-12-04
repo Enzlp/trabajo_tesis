@@ -755,3 +755,13 @@ class LatamIaCoauthorshipView(models.Model):
 	class Meta: 
 		managed= False
 		db_table = 'latam_ia_coauthorships'
+
+#Coocurrencia de conceptos
+class CoocurrenceConcept(models.Model):
+	concept_id_1 = models.CharField()
+	concept_id_2 = models.CharField()
+	co_occurrence_count = models.IntegerField()
+
+	class Meta: 
+		managed= False
+		db_table = 'co_occurrence_conceptos'
