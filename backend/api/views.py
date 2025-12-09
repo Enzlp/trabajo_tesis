@@ -189,10 +189,11 @@ class RecommendationViewSet(APIView):
         concept_to_index = ContentBasedQueries._cache['concept_to_index']
         idf_vector = ContentBasedQueries._cache['idf_vector']
 
-        # 🔹 Traer más candidatos si hay filtro de país (para compensar el filtrado)
+        # Si hay filtro por país, traer más candidatos primero
         candidate_limit = 20000 if country_code else limit
         
-        # 💡 HybridRecommender devuelve (aid, final_score_híbrido, z_score_cb, z_score_colab)
+        # HybridRecommender devuelve:
+        # (aid, hybrid_score, cb_score, cf_score)
         recommendations = HybridRecommender().get_recommendations(
             user_input=concept_vector,
             author_id=author_id,
@@ -202,184 +203,173 @@ class RecommendationViewSet(APIView):
         )
         
         if not recommendations:
-            response_data = {
-                'total_recommendations': 0,
-                'recommendations': []
-            }
-        else:
-            # 💡 CAMBIO: Extraer los 4 valores de la tupla
-            top_author_ids = [aid for aid, _, _, _ in recommendations]
-            scores_dict_hybrid = {aid: score for aid, score, _, _ in recommendations}
-            z_scores_dict_cb = {aid: z_score for aid, _, z_score, _ in recommendations}
-            z_scores_dict_colab = {aid: z_score for aid, _, _, z_score in recommendations}
+            response_data = {'total_recommendations': 0, 'recommendations': []}
+            output_serializer = RecommendationListSerializer(response_data)
+            return Response(output_serializer.data, status=status.HTTP_200_OK)
 
-            # 🔹 FILTRADO POR PAÍS (si se especifica)
-            if country_code:
-                # Query eficiente: solo traer IDs de autores del país
-                valid_author_ids = set(
-                    LatamAuthorView.objects.filter(
-                        id__in=top_author_ids,
-                        country_code=country_code
-                    ).values_list('id', flat=True)
-                )
-                
-                # Filtrar recomendaciones manteniendo el orden y score
-                # 💡 CAMBIO: El filtro debe mantener la tupla de 4 elementos
-                recommendations = [
-                    (aid, score, z_score_cb, z_score_colab) 
-                    for aid, score, z_score_cb, z_score_colab in recommendations 
-                    if aid in valid_author_ids
-                ]
-                
-                if not recommendations:
-                    response_data = {
-                        'total_recommendations': 0,
-                        'recommendations': []
-                    }
-                    output_serializer = RecommendationListSerializer(response_data)
-                    return Response(output_serializer.data, status=status.HTTP_200_OK)
-            
-            # 🔹 Actualizar top_author_ids DESPUÉS del filtro
-            top_author_ids = [aid for aid, _, _, _ in recommendations]
-            
-            # --- Query 1: autores (traer métricas para reordenamiento) ---
-            authors_dict = LatamAuthorView.objects.filter(
-                id__in=top_author_ids
-            ).only(
-                'id','orcid','display_name','works_count','cited_by_count',
-                'country_code','institution_name'
-            ).in_bulk()
+        # Extraer ids y diccionarios de scores
+        top_author_ids = [aid for aid, _, _, _ in recommendations]
+        hybrid_scores_dict = {aid: score for aid, score, _, _ in recommendations}
+        cb_scores_dict = {aid: cb for aid, _, cb, _ in recommendations}
+        cf_scores_dict = {aid: cf for aid, _, _, cf in recommendations}
 
-            # 🔹 REORDENAMIENTO POR MÉTRICAS (si se especifica)
-            if order_by == 'works':
-                # Reordenar por works_count descendente, manteniendo similarity (híbrida) como desempate
-                recommendations = sorted(
-                    recommendations,
-                    key=lambda x: (
-                        -(authors_dict.get(x[0]).works_count or 0) if authors_dict.get(x[0]) else 0,
-                        -x[1] # x[1] es el final_score_híbrido
-                    )
-                )
-            elif order_by == 'cites':
-                # Reordenar por cited_by_count descendente, manteniendo similarity (híbrida) como desempate
-                recommendations = sorted(
-                    recommendations,
-                    key=lambda x: (
-                        -(authors_dict.get(x[0]).cited_by_count or 0) if authors_dict.get(x[0]) else 0,
-                        -x[1] # x[1] es el final_score_híbrido
-                    )
-                )
-
-            if order_by in ['works', 'cites']:
-                print(f"\n🔍 Top 10 después de ordenar por {order_by}:")
-                # 💡 CAMBIO: Desempaquetar los 4 valores para imprimir
-                for i, (aid, score, z_score_cb, z_score_colab) in enumerate(recommendations[:10]):
-                    author = authors_dict.get(aid)
-                    if author:
-                        print(f"{i+1}. {author.display_name}: "
-                            f"works={author.works_count}, "
-                            f"cites={author.cited_by_count}, "
-                            f"sim={score:.4f}, z_cb={z_score_cb:.4f}, z_colab={z_score_colab:.4f}")
-            
-            # 🔹 AHORA SÍ aplicar el límite final después del reordenamiento
-            recommendations = recommendations[:limit]
-            
-            # 💡 CAMBIO: Re-crear los diccionarios de scores con los autores finales
-            top_author_ids = [aid for aid, _, _, _ in recommendations]
-            scores_dict_hybrid = {aid: score for aid, score, _, _ in recommendations}
-            z_scores_dict_cb = {aid: z_score for aid, _, z_score, _ in recommendations}
-            z_scores_dict_colab = {aid: z_score for aid, _, _, z_score in recommendations}
-
-
-            # --- Query 2: conceptos (top-3 por autor) ---
-            concept_rows = MvLatamIaConceptView.objects.filter(
-                author_id__in=top_author_ids
+        # FILTRO POR PAÍS
+        if country_code:
+            valid_author_ids = set(
+                LatamAuthorView.objects.filter(
+                    id__in=top_author_ids,
+                    country_code=country_code
+                ).values_list('id', flat=True)
             )
 
-            # Extraer todos los concept_ids que aparecerán en el top 3
-            all_concept_ids = set()
-            top_concepts_temp = {}
-            
-            # 🆕 INICIO DEL SNIPPET DE TF-IDF SUBLINEAL
-            for row in concept_rows:
-                
-                raw_pairs = zip(row.concept_ids, row.concept_tfs)
-                
-                # Lista para almacenar (concept_id, tfidf_score)
-                tfidf_scores = []
-                
-                # Calcular TF-IDF Sublineal para ordenar los conceptos (Mide especialización)
-                for concept_id, raw_tf in raw_pairs:
-                    if concept_id not in concept_to_index:
-                        continue
-                    
-                    concept_idx = concept_to_index[concept_id]
-                    
-                    # 1. TF Sublineal: 1 + log(TF)
-                    tf_value = float(raw_tf)
-                    if tf_value > 0:
-                        tf_sublineal = 1 + math.log(tf_value)
-                    else:
-                        tf_sublineal = 0.0
-                        
-                    # 2. Aplicar IDF: TF_sublineal * IDF
-                    idf_w = idf_vector[concept_idx]
-                    tfidf_score = tf_sublineal * idf_w
-                    
-                    if tfidf_score > 0:
-                        tfidf_scores.append((concept_id, tfidf_score))
+            recommendations = [
+                (aid, hybrid_score, cb_score, cf_score)
+                for aid, hybrid_score, cb_score, cf_score in recommendations
+                if aid in valid_author_ids
+            ]
 
-                # Ordenar por el score TF-IDF y tomar el top 3
-                pairs = sorted(
-                    tfidf_scores,
-                    key=lambda x: x[1],
-                    reverse=True
-                )[:3]  # top 3
-                
-                top_concepts_temp[row.author_id] = pairs
-                
-                for cid, _ in pairs:
-                    all_concept_ids.add(cid)
+            if not recommendations:
+                response_data = {'total_recommendations': 0, 'recommendations': []}
+                output_serializer = RecommendationListSerializer(response_data)
+                return Response(output_serializer.data, status=status.HTTP_200_OK)
 
-            # --- Query 3: nombres de conceptos ---
-            concept_objects = Concept.objects.filter(id__in=all_concept_ids).only("id", "display_name")
-            concept_name_map = {c.id: c.display_name for c in concept_objects}
+        # Actualizar IDs tras filtrado
+        top_author_ids = [aid for aid, _, _, _ in recommendations]
 
-            # Reemplazar por objetos finales con display_name
-            concepts_dict = {}
-            for author_id, pairs in top_concepts_temp.items():
-                concepts_dict[author_id] = [
-                    {
-                        "concept_id": cid,
-                        "score": float(score),
-                        "display_name": concept_name_map.get(cid, None)
-                    }
-                    for cid, score in pairs
-                ]
+        # Query autores
+        authors_dict = LatamAuthorView.objects.filter(
+            id__in=top_author_ids
+        ).only(
+            'id','orcid','display_name','works_count','cited_by_count',
+            'country_code','institution_name'
+        ).in_bulk()
 
-            # --- Construir respuesta final ---
-            author_data = []
-            for aid in top_author_ids:
-                author = authors_dict.get(aid)
-                if author:
-                    author_data.append({
-                        "author_id": aid,
-                        "orcid": author.orcid,
-                        "display_name": author.display_name,
-                        "country_code": author.country_code,
-                        "institution_name": author.institution_name,
-                        "similarity_score": float(scores_dict_hybrid[aid]), # Score Híbrido (Min-Max ponderado)
-                        "z_score_cb": float(z_scores_dict_cb[aid]),         # Z-Score del Content-Based
-                        "z_score_cf": float(z_scores_dict_colab[aid]),   # Z-Score del Collaborative Filtering
-                        "works_count": author.works_count or 0,
-                        "cited_by_count": author.cited_by_count or 0,
-                        "top_concepts": concepts_dict.get(aid, [])
-                    })
+        # ORDENAMIENTO
+        if order_by == 'works':
+            recommendations = sorted(
+                recommendations,
+                key=lambda x: (
+                    -(authors_dict.get(x[0]).works_count or 0),
+                    -x[1]
+                )
+            )
 
-            response_data = {
-                'total_recommendations': len(recommendations),
-                'recommendations': author_data
-            }
+        elif order_by == 'cites':
+            recommendations = sorted(
+                recommendations,
+                key=lambda x: (
+                    -(authors_dict.get(x[0]).cited_by_count or 0),
+                    -x[1]
+                )
+            )
+
+        # Aplicar límite final
+        recommendations = recommendations[:limit]
+
+        # Regenerar diccionarios finales
+        top_author_ids = [aid for aid, _, _, _ in recommendations]
+        hybrid_scores_dict = {aid: s for aid, s, _, _ in recommendations}
+        cb_scores_dict = {aid: cb for aid, _, cb, _ in recommendations}
+        cf_scores_dict = {aid: cf for aid, _, _, cf in recommendations}
+
+        # Query conceptos top-3 por autor (TF-IDF sublineal)
+        concept_rows = MvLatamIaConceptView.objects.filter(
+            author_id__in=top_author_ids
+        )
+
+        all_concept_ids = set()
+        top_concepts_temp = {}
+
+        for row in concept_rows:
+
+            raw_pairs = zip(row.concept_ids, row.concept_tfs)
+
+            tfidf_scores = []
+
+            for concept_id, raw_tf in raw_pairs:
+                if concept_id not in concept_to_index:
+                    continue
+
+                concept_idx = concept_to_index[concept_id]
+
+                tf_value = float(raw_tf)
+                tf_sub = 1 + math.log(tf_value) if tf_value > 0 else 0
+
+                idf_w = idf_vector[concept_idx]
+                tfidf_score = tf_sub * idf_w
+
+                if tfidf_score > 0:
+                    tfidf_scores.append((concept_id, tfidf_score))
+
+            pairs = sorted(tfidf_scores, key=lambda x: x[1], reverse=True)[:3]
+            top_concepts_temp[row.author_id] = pairs
+
+            for cid, _ in pairs:
+                all_concept_ids.add(cid)
+
+        concept_objects = Concept.objects.filter(id__in=all_concept_ids).only("id", "display_name")
+        concept_name_map = {c.id: c.display_name for c in concept_objects}
+
+        concepts_dict = {}
+        for author_id, pairs in top_concepts_temp.items():
+            concepts_dict[author_id] = [
+                {
+                    "concept_id": cid,
+                    "score": float(score),
+                    "display_name": concept_name_map.get(cid)
+                }
+                for cid, score in pairs
+            ]
+
+        # Construcción final del payload
+        author_data = []
+        for aid in top_author_ids:
+            author = authors_dict.get(aid)
+            if author:
+                author_data.append({
+                    "author_id": aid,
+                    "orcid": author.orcid,
+                    "display_name": author.display_name,
+                    "country_code": author.country_code,
+                    "institution_name": author.institution_name,
+                    "similarity_score": float(hybrid_scores_dict[aid]),  # Score híbrido
+                    "cb_score": float(cb_scores_dict[aid]),              # Score del content-based
+                    "cf_score": float(cf_scores_dict[aid]),              # Score del collaborative filtering
+                    "works_count": author.works_count or 0,
+                    "cited_by_count": author.cited_by_count or 0,
+                    "top_concepts": concepts_dict.get(aid, [])
+                })
+
+        response_data = {
+            'total_recommendations': len(recommendations),
+            'recommendations': author_data
+        }
 
         output_serializer = RecommendationListSerializer(response_data)
         return Response(output_serializer.data, status=status.HTTP_200_OK)
+
+
+class AuthorConceptsView(APIView):
+    """
+    GET /api/authors/<author_id>/concepts/
+    Devuelve los conceptos asociados al autor
+    """
+    def get(self, request, author_id):
+        author_prefix = "https://openalex.org/"
+        concept_ids = (
+            MvLatamIaConceptView.objects
+            .filter(author_id=f"{author_prefix}{author_id}")
+            .values_list("concept_ids", flat=True)
+            .first()
+        )
+
+        if concept_ids is None:
+            return Response(
+                {"error": "Autor no encontrado."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        concepts = Concept.objects.filter(id__in=concept_ids).values("id", "display_name")
+
+        return Response(list(concepts), status=status.HTTP_200_OK)
+

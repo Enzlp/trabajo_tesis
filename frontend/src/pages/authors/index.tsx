@@ -1,7 +1,7 @@
 import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import loading_animation from "../../assets/loading_animation.svg";
-import user_id from '../../assets/user-id.svg';
+import { Building, MapPin, BookOpen, Award, ExternalLink } from "lucide-react";
 import AuthorWorks from "./AuthorWorks";
 
 interface Author {
@@ -108,63 +108,93 @@ export default function Authors() {
   }
 
   return (
-    <div className="min-h-screen px-8 py-2 flex flex-col m-4">
-      <div className="flex w-full gap-4">
-        <div className="flex flex-col border-2 border-gray-300 rounded-xl p-6 w-4/10 h-fit">
-          <div className="flex items-center gap-2">
-            <img src={user_id} className="w-10 h-10" alt="user" />
-            <h3 className="text-xl font-semibold">{authorInfo.display_name}</h3>
-          </div>
-
-          <div className="py-2">
-            <p className="text-base text-gray-700">
-              <span className="font-semibold">Nombres Alternativos:</span>{" "}
-              {authorInfo.display_name_alternatives?.length > 0
-                ? authorInfo.display_name_alternatives.join(", ")
-                : "No disponible"}
-            </p>
-
-            <p className="text-base text-gray-700">
-              <span className="font-semibold">Institución: </span>
-              <a href={institutionUrl} className="text-blue-700 font-semibold">{institutionName || "Cargando..."}</a>
-            </p>
-
-            <p className="text-base text-gray-700">
-              <span className="font-semibold">Pais: </span>
-              {latamCountryCodes[countryCode]}
-            </p>
-
-            <p className="text-base text-gray-700">
-              <span className="font-semibold">ORCID: </span>
-              {authorInfo.orcid ? (
-                <a href={authorInfo.orcid} className="text-blue-700 font-semibold">
-                  Ver ORCID
-                </a>
-              ) : (
-                "N/A"
-              )}
-            </p>
-            <p className="text-base text-gray-700">
-              <span className="font-semibold">OpenAlex:</span>{" "}
-              <a href={authorInfo.id} className="text-blue-700 font-semibold">Ver en OpenAlex</a>
-            </p>
-          </div>
-
-          <hr className="my-2 border-gray-300" />
-
-          <div className="py-2">
-            <p className="text-base text-gray-700">
-              <span className="font-semibold">N° de trabajos: </span>
-              {authorInfo.works_count}
-            </p>
-            <p className="text-base text-gray-700">
-              <span className="font-semibold">N° de citas: </span>
-              {authorInfo.cited_by_count}
-            </p>
-          </div>
-        </div>
-        <AuthorWorks/>
-      </div>
+    <div className="min-h-screen">
+      	<div className="max-w-7xl mx-auto px-6 py-8">
+			<div className="rounded-xl border-2 border-gray-300 p-8 mb-6">
+				<div className="border-b border-gray-200 pb-6 mb-6">
+					<h1 className="text-2xl mb-2">{authorInfo.display_name}</h1>
+					<div className="text-gray-600">
+						{authorInfo?.display_name_alternatives?.length > 0 ? (
+							<>También conocido como: {authorInfo.display_name_alternatives.join(", ")}</>
+						) : (
+							"No disponible"
+						)}
+					</div>
+				</div>
+				<div className="grid md:grid-cols-2 gap-6 mb-6">
+					{/* Left Column */}
+					<div className="space-y-4">
+						<div className="flex items-start gap-3">
+							<Building className="w-5 h-5 text-teal-600 mt-0.5 flex-shrink-0" />
+							<div>
+								<div className="text-sm text-gray-600">Institución</div>
+								<div><a href={institutionUrl} className="text-blue-700 font-semibold">{institutionName || "Cargando..."}</a></div>
+							</div>
+						</div>
+						<div className="flex items-start gap-3">
+							<MapPin className="w-5 h-5 text-teal-600 mt-0.5 flex-shrink-0" />
+							<div>
+								<div className="text-sm text-gray-600">País</div>
+								<div>{latamCountryCodes[countryCode]}</div>
+							</div>
+						</div>
+						
+						<div className="flex items-start gap-3">
+							<BookOpen className="w-5 h-5 text-teal-600 mt-0.5 flex-shrink-0" />
+							<div>
+								<div className="text-sm text-gray-600">Número de publicaciones</div>
+								<div>{authorInfo.works_count}</div>
+							</div>
+						</div>
+						
+						<div className="flex items-start gap-3">
+							<Award className="w-5 h-5 text-teal-600 mt-0.5 flex-shrink-0" />
+							<div>
+								<div className="text-sm text-gray-600">Número de citas</div>
+								<div>{authorInfo.cited_by_count}</div>
+							</div>
+						</div>	
+					</div>
+					{/* Right Column */}
+					<div className="space-y-4">
+					{authorInfo.orcid && (
+						<div className="flex items-start gap-3">
+						<ExternalLink className="w-5 h-5 text-teal-600 mt-0.5 flex-shrink-0" />
+						<div>
+							<div className="text-sm text-gray-600 mb-1">ORCID</div>
+							<a
+							href={`https://orcid.org/${authorInfo.orcid}`}
+							target="_blank"
+							rel="noopener noreferrer"
+							className="text-teal-600 hover:text-teal-700 hover:underline inline-flex items-center gap-1"
+							>
+							{authorInfo.orcid}
+							<ExternalLink className="w-4 h-4" />
+							</a>
+						</div>
+						</div>
+					)}
+					
+					<div className="flex items-start gap-3">
+						<ExternalLink className="w-5 h-5 text-teal-600 mt-0.5 flex-shrink-0" />
+						<div>
+						<div className="text-sm text-gray-600 mb-1">Perfil OpenAlex</div>
+						<a
+							href={authorInfo.id}
+							target="_blank"
+							rel="noopener noreferrer"
+							className="text-teal-600 hover:text-teal-700 hover:underline inline-flex items-center gap-1 break-all"
+						>
+							{authorInfo.id}
+							<ExternalLink className="w-4 h-4 flex-shrink-0" />
+						</a>
+						</div>
+					</div>
+					</div>
+				</div>
+			</div>
+			<AuthorWorks />
+    	</div>
     </div>
   );
 }

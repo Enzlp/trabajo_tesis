@@ -54,19 +54,9 @@ class CollaborativeFilteringQueries:
         # Excluir al mismo autor
         predicted_scores[author_idx] = -np.inf
         
-        # 🔹 Normalización Gaussiana (Z-Score)
         valid_scores = predicted_scores[predicted_scores != -np.inf]
         
-        mean = np.mean(valid_scores)
-        std = np.std(valid_scores, ddof=0)
-        epsilon = 1e-8
-
-        z_scores = np.where(
-            predicted_scores == -np.inf,
-            -np.inf,
-            (predicted_scores - mean) / (std + epsilon)
-        )
-        
+        epsilon = 1e-8    
 
         # 🔹 Normalización Min-Max (Score de Fusión)
         min_score = predicted_scores[predicted_scores != -np.inf].min()
@@ -102,7 +92,7 @@ class CollaborativeFilteringQueries:
         
         # Construir toda la lista de recomendaciones: (author_id, score_min_max, z_score)
         recommendations = [
-            (idx_to_author[idx], float(predicted_scores_norm[idx]), float(z_scores[idx]))
+            (idx_to_author[idx], float(predicted_scores_norm[idx]))
             for idx in sorted_indices
             if predicted_scores_norm[idx] != -np.inf # Excluir el autor mismo
         ]

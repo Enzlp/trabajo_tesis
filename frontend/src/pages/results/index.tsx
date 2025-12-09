@@ -26,8 +26,8 @@ type Recommendation = {
   country_code:string;
   institution_name:string;
   similarity_score: number;
-	z_score_cb: number;
-	z_score_cf: number;
+  cb_score: number;
+  cf_score: number;
   works_count: number;
   cited_by_count: number;
   top_concepts: ConceptScore[];
@@ -62,9 +62,9 @@ export default function Results() {
 			"Este modelo es una suma ponderada de un modelo Content-Based (CB) y un modelo de Collaborative Filtering (CF). " +
 			"La combinación se hace sobre scores normalizados con Min-Max, para ponderar posiciones relativas. Los pesos deben sumar 1.";
 
-	const infoRecommendations = "Las recomendaciones se derfinen usando un modelo basado en contenido por afinidad temática y/o un modelo de filtrado colaborativo "+
-	"sobre las redes de colaboracion del autor ingresado, la elección de modelo se hace en base al input del usuario, pudiendo generarse recomendaciones individuales o un sistema híbrido dependiendo del caso. Los Z-score definen relevancia en base a cuantas desviaciones sobre la media se encuentra el autor"+
-	" recomendado con respecto al modelo correspondiente. ";
+	const infoRecommendations = "Las recomendaciones se definen usando un modelo basado en contenido por afinidad temática y/o un modelo de filtrado colaborativo "+
+	"sobre las redes de colaboracion del autor ingresado, la elección de modelo se hace en base al input del usuario, pudiendo generarse recomendaciones individuales o un sistema híbrido dependiendo del caso. Los score definen relevancia en base a el maximo score de afinidad obtenido"+
+	" usando una normalizacion min-max para cada modelo y el score total es la ponderacion en base a pesos definidos.";
 
 	const infoFilter = "Se pueden definir filtros para ordenar las recomendaciones en base a score de similitud (posicion relativa), n° de citas y n° de trabajos. Tambien se puede "
 	+"filtrar las recomendaciones en base al pais objetivo, y definir un limite de resultados a traer hasta 200. Este filtrado y ordenamiento se hace sobre el total de autores a recomendar.";

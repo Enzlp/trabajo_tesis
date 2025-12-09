@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { useParams } from "react-router-dom";
 import loading_animation from "../../assets/loading_animation.svg";
+import { ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface Work{
   cited_by_count: number;
@@ -66,7 +67,7 @@ export default function AuthorWorks() {
 
   if (loading) {
     return (
-      <div className="flex flex-col rounded-xl p-6 w-6/10 items-center justify-center">
+      <div className="flex flex-col rounded-xl p-6 items-center justify-center">
         <img
           src={loading_animation}
           alt="Cargando..."
@@ -84,72 +85,188 @@ export default function AuthorWorks() {
     );
   }
 
-  const obtainId = (url: string) =>{
-    const u = new URL(url);
-    // El ID va después del último "/"
-    const path = u.pathname;                 // "/W123456"
-    const id = path.split("/").filter(Boolean).pop() || "";
-    return id;
+  
+	const getWorkTypeColor = (type: string) => {
+		if (type.includes('article')) {
+		return 'bg-blue-100 text-blue-700';
+		} else if (type.includes('proceedings') || type.includes('conference')) {
+		return 'bg-purple-100 text-purple-700';
+		} else if (type.includes('chapter')) {
+		return 'bg-green-100 text-green-700';
+		} else if (type.includes('preprint')) {
+		return 'bg-orange-100 text-orange-700';
+		}
+		return 'bg-gray-100 text-gray-700';
+	};
+	const getPageNumbers = () => {
+  const pages = [];
+
+  if (totalPages <= 7) {
+    for (let i = 1; i <= totalPages; i++) pages.push(i);
+    return pages;
   }
 
-  return (
-    <div className="flex flex-col border-2 border-gray-300 rounded-xl p-6 w-6/10">
-      <h3 className="px-4 mb-2 text-xl font-bold">
-        Trabajos
-      </h3>
-      
-      {currentWorks.map((work: Work) => (
-        <div
-          key={obtainId(work.id)}
-          className="p-4 hover:bg-gray-100 hover:cursor-pointer transition-colors duration-300"
-          onClick={() => window.open(work.id, "_blank")}
-        >
-          <h3
-            className="text-base font-semibold"
-            dangerouslySetInnerHTML={{ __html: work.title }}
-          />
-          <div>
-            <p className="text-sm text-gray-400 font-semibold">
-              {work.publication_year}
-            </p>
-          </div>
-          <div className="flex">
-            <p className="text-sm font-medium">
-              Citado por {work.cited_by_count} - Idioma: {work.language}
-            </p>
-          </div>
-        </div>
-      ))}
+  // Siempre se muestra la primera página
+  pages.push(1);
 
-      <div className="flex justify-center items-center mt-4 gap-4">
-        <button
-          onClick={handlePrev}
-          disabled={currentPage === 1}
-          className={`px-4 py-2 rounded-lg ${
-            currentPage === 1
-              ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-              : "bg-gray-800 text-white hover:bg-gray-700 cursor-pointer"
-          }`}
-        >
-          Anterior
-        </button>
+  // Mostrar ... si estamos lejos del inicio
+  if (currentPage > 3) pages.push("...");
 
-        <span className="text-sm font-medium text-gray-600">
-          Página {currentPage} de {totalPages}
-        </span>
+  // Páginas intermedias
+  const start = Math.max(2, currentPage - 1);
+  const end = Math.min(totalPages - 1, currentPage + 1);
 
-        <button
-          onClick={handleNext}
-          disabled={currentPage >= totalPages}
-          className={`px-4 py-2 rounded-lg ${
-            currentPage >= totalPages
-              ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-              : "bg-gray-800 text-white hover:bg-gray-700 cursor-pointer"
-          }`}
-        >
-          Siguiente
-        </button>
-      </div>
+  for (let i = start; i <= end; i++) pages.push(i);
+
+  // ... si estamos lejos del final
+  if (currentPage < totalPages - 2) pages.push("...");
+
+  // Última página
+  pages.push(totalPages);
+
+  return pages;
+};
+
+const handlePageClick = (page: number) => {
+  setCurrentPage(page);
+};	
+
+return (
+  <div className="border-2 border-gray-300 rounded-xl overflow-hidden">
+
+    {/* Header */}
+    <div className="p-6 border-b border-gray-200">
+      <h2 className="text-xl mb-1">Publicaciones Recientes</h2>
+      <p className="text-gray-600">
+        Mostrando {startIndex + 1}-{Math.min(endIndex, allWorks.length)} de {allWorks.length} publicaciones
+      </p>
     </div>
-  );
-}
+
+    {/* Tabla */}
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse">
+        <thead className="bg-gray-50 border-b border-gray-200">
+          <tr>
+            <th className="px-6 py-3 text-left text-gray-700">Título</th>
+            <th className="px-6 py-3 text-left text-gray-700">Año</th>
+            <th className="px-6 py-3 text-left text-gray-700">Tipo</th>
+            <th className="px-6 py-3 text-left text-gray-700">Citas</th>
+            <th className="px-6 py-3 text-left text-gray-700">Enlaces</th>
+          </tr>
+        </thead>
+
+        <tbody className="divide-y divide-gray-200">
+          {currentWorks.map((work: Work) => (
+            <tr key={work.id} className="hover:bg-gray-50 transition-colors">
+
+              	{/* Título */}
+				<td className="px-6 py-4 w-full">
+				<div className="whitespace-normal break-words">
+					{work.title || work.display_name}
+					{work.is_retracted && (
+					<span className="ml-2 inline-block px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs">
+						Retractado
+					</span>
+					)}
+				</div>
+				</td>
+
+				{/* Año */}
+				<td className="px-6 py-4 text-gray-600">
+					{work.publication_year}
+				</td>
+
+				{/* Tipo */}
+				<td className="px-6 py-4">
+					<span
+					className={`inline-block px-2 py-1 rounded text-sm ${getWorkTypeColor(work.type)}`}
+					>
+					{work.type}
+					</span>
+				</td>
+
+				{/* Citas */}
+				<td className="px-6 py-4 text-gray-600">
+					{work.cited_by_count.toLocaleString()}
+				</td>
+
+				{/* Enlaces */}
+				<td className="px-6 py-4">
+					<div className="flex flex-col gap-1">
+					{work.doi && (
+						<a
+						href={
+							work.doi.startsWith("http")
+							? work.doi
+							: `https://doi.org/${work.doi}`
+						}
+						target="_blank"
+						rel="noopener noreferrer"
+						className="text-teal-600 hover:text-teal-700 inline-flex items-center gap-1 text-sm"
+						title="Ver DOI"
+						>
+						DOI <ExternalLink className="w-3 h-3" />
+						</a>
+					)}
+
+					<a
+						href={work.id}
+						target="_blank"
+						rel="noopener noreferrer"
+						className="text-teal-600 hover:text-teal-700 inline-flex items-center gap-1 text-sm"
+						title="Ver en OpenAlex"
+					>
+						OpenAlex <ExternalLink className="w-3 h-3" />
+					</a>
+					</div>
+				</td>
+
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+	{/* Pagination */}
+	<div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+	<button
+		onClick={handlePrev}
+		disabled={currentPage === 1}
+		className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+	>
+		<ChevronLeft className="w-4 h-4" />
+		Anterior
+	</button>
+	
+	<div className="flex items-center gap-1 cursor-pointer">
+		{getPageNumbers().map((page, index) => (
+		typeof page === 'number' ? (
+			<button
+			key={index}
+			onClick={() => handlePageClick(page)}
+			className={`w-10 h-10 rounded-lg transition-colors cursor-pointer ${
+				currentPage === page
+				? 'bg-teal-500 text-white'
+				: 'hover:bg-gray-100 text-gray-700'
+			}`}
+			>
+			{page}
+			</button>
+		) : (
+			<span key={index} className="px-2 text-gray-500">
+			{page}
+			</span>
+		)
+		))}
+	</div>
+	
+	<button
+		onClick={handleNext}
+		disabled={currentPage === totalPages}
+		className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+	>
+		Siguiente
+		<ChevronRight className="w-4 h-4" />
+	</button>
+	</div>
+  </div>
+)};

@@ -155,12 +155,8 @@ class ContentBasedQueries:
         )
 
 
-        # Normalización Gaussiana (Z-score) (x - µ) / (σ )
-        mean = np.mean(similarities)
-        std = np.std(similarities, ddof=0)
         
         epsilon = 1e-8
-        z_scores = (similarities - mean) / (std + epsilon)
 
         # Normalización min-max para posicion relativa
         min_sim = similarities.min()
@@ -181,12 +177,11 @@ class ContentBasedQueries:
         sorted_indices = np.argsort(-similarities_norm)
         sorted_author_ids = author_ids[sorted_indices]
         sorted_scores = similarities_norm[sorted_indices] # Min-Max score
-        sorted_z_scores = z_scores[sorted_indices] # Z-score
 
         # Empaquetar resultados: (author_id, score_min_max, z_score)
         recommendations = [
-            (author_id, float(score), float(z_score))
-            for author_id, score, z_score in zip(sorted_author_ids, sorted_scores, sorted_z_scores)
+            (author_id, float(score))
+            for author_id, score in zip(sorted_author_ids, sorted_scores)
         ]
         
         return recommendations
