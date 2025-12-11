@@ -103,6 +103,7 @@ export default function Results() {
 				setTotalResult(data.total_recommendations);
 				setLoading(false);
 
+
 			} catch (err) {
 				if (err instanceof Error) console.log(err.message);
 			}
@@ -203,123 +204,128 @@ export default function Results() {
 		}
 	}
 
-	return (
-		<div className="min-h-screen px-8 py-2 flex flex-col m-4">
-		
-			<div className="flex w-full gap-4">
-				<div className="flex flex-col w-6/10">
-					<div className="flex items-center gap-2 relative mb-4">
-						<h1 className="text-2xl font-bold">Investigadores recomendados</h1>
-						<div
-							onMouseEnter={() => setShowInfoRec(true)}
-							onMouseLeave={() => setShowInfoRec(false)}
-							className="relative cursor-pointer"
-						>
-							<img 
-								src={InfoCircle}
-								alt="info"
-								className="w-5 h-5"
-							/>
+return (
+  <div className="min-h-screen px-3 sm:px-6 md:px-8 py-2 flex flex-col m-2 sm:m-4">
+  
+    <div className="flex flex-col lg:flex-row w-full gap-4">
+      {/* Columna izquierda - Recomendaciones */}
+      <div className="flex flex-col w-full lg:w-6/10">
+        <div className="flex items-center gap-2 relative mb-4">
+          <h1 className="text-xl sm:text-2xl font-bold">Investigadores recomendados</h1>
+          <div
+            onClick={() => setShowInfoRec(!showInfoRec)}
+            className="relative cursor-pointer"
+          >
+            <img 
+              src={InfoCircle}
+              alt="info"
+              className="w-4 h-4 sm:w-5 sm:h-5"
+            />
 
-							{showInfoRec && (
-								<div
-									className="absolute z-10 w-64 p-3 left-6 top-1/2 -translate-y-1/2
-													bg-gray-800 text-white text-xs rounded-lg shadow-lg
-													before:content-[''] before:absolute before:top-1/2 before:-left-3
-													before:-translate-y-1/2 before:border-8
-													before:border-y-transparent before:border-l-transparent
-													before:border-r-gray-800"
-								>
-									{infoRecommendations}
-								</div>
-							)}
-						</div>
-					</div>
-					<RecommendedCard recs={recommendations} loading={loading}/>
-				</div>
-				
-				<div className="flex flex-col w-4/10">
-					<div className="flex flex-col">
-						<div className="flex items-center gap-2 relative mb-4">
-							<h1 className="text-2xl font-bold">Filtros</h1>
-							<div
-								onMouseEnter={() => setShowInfoFilter(true)}
-								onMouseLeave={() => setShowInfoFilter(false)}
-								className="relative cursor-pointer"
-							>
-								<img 
-									src={InfoCircle}
-									alt="info"
-									className="w-5 h-5"
-								/>
+            {showInfoRec && (
+              <>
+                {/* Overlay para cerrar al hacer click fuera */}
+                <div 
+                  className="fixed inset-0 z-10"
+                  onClick={() => setShowInfoRec(false)}
+                />
+                <div
+                  className="absolute z-20 w-64 sm:w-72 p-3 right-0 sm:left-6 top-6 sm:top-1/2 sm:-translate-y-1/2
+                              bg-gray-800 text-white text-xs rounded-lg shadow-lg"
+                >
+                  {infoRecommendations}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+        <RecommendedCard recs={recommendations} loading={loading}/>
+      </div>
+      
+      {/* Columna derecha - Filtros y métricas */}
+      <div className="flex flex-col w-full lg:w-4/10">
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2 relative mb-4">
+            <h1 className="text-xl sm:text-2xl font-bold">Filtros</h1>
+            <div
+              onClick={() => setShowInfoFilter(!showInfoFilter)}
+              className="relative cursor-pointer"
+            >
+              <img 
+                src={InfoCircle}
+                alt="info"
+                className="w-4 h-4 sm:w-5 sm:h-5"
+              />
 
-								{showInfoFilter && (
-									<div
-										className="absolute z-10 w-64 p-3 left-6 top-1/2 -translate-y-1/2
-														bg-gray-800 text-white text-xs rounded-lg shadow-lg
-														before:content-[''] before:absolute before:top-1/2 before:-left-3
-														before:-translate-y-1/2 before:border-8
-														before:border-y-transparent before:border-l-transparent
-														before:border-r-gray-800"
-									>
-										{infoFilter}
-									</div>
-								)}
-							</div>
-						</div>
-						<FilterCard filterFunction={applyFilters}/>
-					</div>
-					<div className="flex gap-4">
-						{conceptList.length > 0 && authorId !== "" && (
-							<div className="flex flex-col w-6/10">
+              {showInfoFilter && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-10"
+                    onClick={() => setShowInfoFilter(false)}
+                  />
+                  <div
+                    className="absolute z-20 w-64 sm:w-72 p-3 right-0 sm:left-6 top-6 sm:top-1/2 sm:-translate-y-1/2
+                                bg-gray-800 text-white text-xs rounded-lg shadow-lg"
+                  >
+                    {infoFilter}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+          <FilterCard filterFunction={applyFilters}/>
+        </div>
+        <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row gap-4">
+          {conceptList.length > 0 && authorId !== "" && (
+            <div className="flex flex-col w-full sm:w-6/10 lg:w-full xl:w-6/10">
 
-								{/* Título Metrics + icono con tooltip */}
-								<div className="flex items-center gap-2 relative">
-									<h1 className="text-2xl font-bold my-4">Metrics</h1>
+              {/* Título Metrics + icono con tooltip */}
+              <div className="flex items-center gap-2 relative">
+                <h1 className="text-xl sm:text-2xl font-bold my-4">Metrics</h1>
 
-									{/* Ícono con hover */}
-									<div
-										onMouseEnter={() => setShowInfo(true)}
-										onMouseLeave={() => setShowInfo(false)}
-										className="relative cursor-pointer"
-									>
-										<img 
-											src={InfoCircle}
-											alt="info"
-											className="w-5 h-5"
-										/>
+                {/* Ícono con click */}
+                <div
+                  onClick={() => setShowInfo(!showInfo)}
+                  className="relative cursor-pointer"
+                >
+                  <img 
+                    src={InfoCircle}
+                    alt="info"
+                    className="w-4 h-4 sm:w-5 sm:h-5"
+                  />
 
-										{showInfo && (
-											<div
-												className="absolute z-10 w-64 p-3 left-6 top-1/2 -translate-y-1/2
-														   bg-gray-800 text-white text-xs rounded-lg shadow-lg
-														   before:content-[''] before:absolute before:top-1/2 before:-left-3
-														   before:-translate-y-1/2 before:border-8
-														   before:border-y-transparent before:border-l-transparent
-														   before:border-r-gray-800"
-											>
-												{infoMetrics}
-											</div>
-										)}
-									</div>
-								</div>
+                  {showInfo && (
+                    <>
+                      <div 
+                        className="fixed inset-0 z-10"
+                        onClick={() => setShowInfo(false)}
+                      />
+                      <div
+                        className="absolute z-20 w-64 sm:w-72 p-3 right-0 sm:left-6 top-6 sm:top-1/2 sm:-translate-y-1/2
+                                   bg-gray-800 text-white text-xs rounded-lg shadow-lg"
+                      >
+                        {infoMetrics}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
 
-								<MetricsCard 
-									peso1={peso1} 
-									peso2={peso2} 
-									setPeso1={setPeso1} 
-									setPeso2={setPeso2} 
-									fetchFunction={weightedFetch}
-								/>
-							</div>
-						)}
-						<div className="flex flex-col w-4/10">
-							<h1 className="text-2xl font-bold my-4">Stats</h1>
-							<StatsCard totalResult={totalResult} />
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-	)
-}
+              <MetricsCard 
+                peso1={peso1} 
+                peso2={peso2} 
+                setPeso1={setPeso1} 
+                setPeso2={setPeso2} 
+                fetchFunction={weightedFetch}
+              />
+            </div>
+          )}
+          <div className="flex flex-col w-full sm:w-4/10 lg:w-full xl:w-4/10">
+            <h1 className="text-xl sm:text-2xl font-bold my-4">Stats</h1>
+            <StatsCard totalResult={totalResult} />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+)};
