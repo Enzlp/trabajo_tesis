@@ -31,20 +31,38 @@ train_model(files_dir)
 
 #train_lightgcn_pyg(edge_path)
 
-#from recommender.collaborative_filtering.matrix_builder import rating_matrix,  matrix_factorization_als
+from recommender.collaborative_filtering.matrix_builder import rating_matrix,  matrix_factorization_als
+from recommender.collaborative_filtering.training_test import run_full_recommendation_system
+
 
 #rating_matrix_file = rating_matrix(files_dir)
 
 #matrix_factorization_als(
-#    rating_matrix_file=rating_matrix_file,
-#    files_dir=files_dir,
-#    K=250,                # tamaño grande para capturar estructura en grafo
-#    iterations=50,        # suficiente para convergencia estable
-#    alpha=50.0,           # peso moderado (colaboraciones repetidas valen más)
-#    regularization=0.05,  # regularización más fuerte por alta dispersión
-#    num_threads=0
+#     rating_matrix_file=rating_matrix_file,
+#     files_dir=files_dir,
+#     K=200,               # Alto K para capturar más relaciones sutiles
+#     iterations=50,
+#     alpha=50.0,
+#     regularization=0.1, # Muy baja regularización para aumentar el Recall
+#     num_threads=0
 #)
 
+# Hiperparametros 
+#factors_list = [128, 200, 256]
+#reg_list = [0.02, 0.05, 0.1, 0.2]
+#iterations = 10  # mejor que 10
 
+# Ejecutar grid search CORRECTO
+#out = run_full_recommendation_system(
+#    factors_list=factors_list,
+#    reg_list=reg_list,
+#    iterations=iterations,
+#    K=20,
+#    sample_users_eval=10000,
+#    random_state=42,
+#    save_dir=files_dir,
+#    num_threads=0,
+#    use_gpu=False
+#)
 
-
+#print(out)

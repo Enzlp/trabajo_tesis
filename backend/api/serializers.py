@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Author, MvIaConceptView, MvLatamIaConceptView, Institution, Work
+from .models import Author, MvIaConcept, MvLatamIaAuthorConcept, Institution, Work, MvRecommendationAuthorPool
 class AuthorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Author
@@ -43,23 +43,22 @@ class WorkSerializer(serializers.ModelSerializer):
         ]
 
 # Serializer autocompletado concepts
-class MvIaConceptViewSerializer(serializers.ModelSerializer):
+class MvIaConceptSerializer(serializers.ModelSerializer):
     class Meta:
-        model = MvIaConceptView
+        model = MvIaConcept
         fields = [
             "id",
             "display_name"
         ]
 
 # Serializer autocompletado de autores
-class MvLatamIaConceptViewSerializer(serializers.ModelSerializer):
+class AuthorsAutocompleteSerializer(serializers.ModelSerializer):
     class Meta:
-        model = MvLatamIaConceptView
+        model = MvRecommendationAuthorPool
         fields = [
             "author_id",
-            "display_name"
+            "display_name",
         ]
-
 # Serializers para recommendaciones
 class ConceptScoreSerializer(serializers.Serializer):
     concept_id = serializers.CharField()
@@ -73,8 +72,8 @@ class RecommendationSerializer(serializers.Serializer):
     country_code = serializers.CharField(allow_null=True)
     institution_name = serializers.CharField(allow_null=True)
     similarity_score = serializers.FloatField()
-    z_score_cb = serializers.FloatField()
-    z_score_cf = serializers.FloatField()
+    cb_score = serializers.FloatField()
+    cf_score = serializers.FloatField()
     works_count = serializers.IntegerField()
     cited_by_count = serializers.IntegerField()
     top_concepts = ConceptScoreSerializer(many=True)
@@ -144,4 +143,3 @@ class GetRecommendationsRequestSerializer(serializers.Serializer):
                 "Debes enviar al menos concept_vector o author_id."
             )
         return data
-

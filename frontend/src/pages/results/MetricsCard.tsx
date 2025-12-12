@@ -33,15 +33,15 @@ export default function MetricsCard({peso1,peso2, setPeso1, setPeso2, fetchFunct
   };
 
   return (
-    <div className="flex flex-col border-2 border-gray-300 rounded-xl p-6 bg-white w-full">
-      <table className="table-fixed w-full text-lg font-semibold border-separate border-spacing-y-3">
+    <div className="flex flex-col border-2 border-gray-300 rounded-xl p-4 sm:p-6 bg-white w-full">
+      <table className="table-fixed w-full text-sm sm:text-base md:text-lg font-semibold border-separate border-spacing-y-2 sm:border-spacing-y-3">
         <colgroup>
           <col className="w-1/2" /> 
           <col className="w-1/2" /> 
         </colgroup>
         <tbody>
           <tr>
-            <td>Peso modelo CB:</td>
+            <td className="text-sm sm:text-base">Peso modelo CB:</td>
             <td>
               <input 
                 type="number"
@@ -50,12 +50,12 @@ export default function MetricsCard({peso1,peso2, setPeso1, setPeso2, fetchFunct
                 step={0.01}
                 value={peso1}
                 onChange={handlePeso1}
-                className="w-full border border-gray-300 rounded px-2"
+                className="w-full border border-gray-300 rounded px-1.5 sm:px-2 py-1 text-sm sm:text-base"
               />
             </td>
           </tr>
           <tr>
-            <td>Peso modelo CF:</td>
+            <td className="text-sm sm:text-base">Peso modelo CF:</td>
             <td>
               <input 
                 type="number"
@@ -64,7 +64,7 @@ export default function MetricsCard({peso1,peso2, setPeso1, setPeso2, fetchFunct
                 step={0.01}
                 value={peso2}
                 onChange={handlePeso2}
-                className="w-full border border-gray-300 rounded px-2"
+                className="w-full border border-gray-300 rounded px-1.5 sm:px-2 py-1 text-sm sm:text-base"
               />
             </td>
           </tr>
@@ -73,7 +73,7 @@ export default function MetricsCard({peso1,peso2, setPeso1, setPeso2, fetchFunct
 
       <div className="mt-4 flex justify-end">
         <button
-          className="px-4 py-2 bg-[#00d1b2] text-white rounded font-semibold cursor-pointer hover:bg-[#00b89c] transition-colors"
+          className="px-3 sm:px-4 py-1.5 sm:py-2 bg-[#00d1b2] text-white rounded text-sm sm:text-base font-semibold cursor-pointer hover:bg-[#00b89c] transition-colors"
           onClick={fetchFunction}
         >
           Cambiar Pesos

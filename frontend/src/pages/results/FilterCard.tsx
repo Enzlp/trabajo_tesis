@@ -33,18 +33,18 @@ export default function FilterCard({ filterFunction }: FilterCardProps) {
   };
 
   return (
-    <div className="flex flex-col border-2 border-gray-300 rounded-xl p-6 bg-white w-full">
-      <table className="table-fixed w-full text-lg font-semibold">
+    <div className="flex flex-col border-2 border-gray-300 rounded-xl p-4 sm:p-6 bg-white w-full">
+      <table className="table-fixed w-full text-sm sm:text-base md:text-lg font-semibold">
         <colgroup>
-          <col className="w-1/2" />
-          <col className="w-1/2" />
+          <col className="w-2/5 sm:w-1/2" />
+          <col className="w-3/5 sm:w-1/2" />
         </colgroup>
         <tbody>
           <tr className="py-2">
-            <td className="align-top">Ordenar Por:</td>
+            <td className="align-top text-sm sm:text-base">Ordenar Por:</td>
             <td className="align-top">
-              <div className="flex flex-col gap-2 w-fit">
-                <label className="flex items-center gap-2 cursor-pointer">
+              <div className="flex flex-col gap-1.5 sm:gap-2 w-fit">
+                <label className="flex items-center gap-2 cursor-pointer text-sm sm:text-base">
                   <input
                     type="radio"
                     name="orden"
@@ -55,7 +55,7 @@ export default function FilterCard({ filterFunction }: FilterCardProps) {
                   Similitud
                 </label>
 
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className="flex items-center gap-2 cursor-pointer text-sm sm:text-base">
                   <input
                     type="radio"
                     name="orden"
@@ -66,7 +66,7 @@ export default function FilterCard({ filterFunction }: FilterCardProps) {
                   N° de citas
                 </label>
 
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className="flex items-center gap-2 cursor-pointer text-sm sm:text-base">
                   <input
                     type="radio"
                     name="orden"
@@ -81,10 +81,10 @@ export default function FilterCard({ filterFunction }: FilterCardProps) {
           </tr>
 
           <tr className="py-2">
-            <td className="align-center">Filtrar por país:</td>
+            <td className="align-center text-sm sm:text-base">Filtrar por país:</td>
             <td className="align-top">
               <select
-                className="flex-1 my-2 border border-gray-300 rounded w-full p-2"
+                className="flex-1 my-2 border border-gray-300 rounded w-full p-1.5 sm:p-2 text-sm sm:text-base"
                 value={countryCode}
                 onChange={(e) => setCountryCode(e.target.value)}
               >
@@ -99,7 +99,7 @@ export default function FilterCard({ filterFunction }: FilterCardProps) {
           </tr>
 
           <tr className="py-2">
-            <td className="align-center">Resultados:</td>
+            <td className="align-center text-sm sm:text-base">Resultados:</td>
             <td className="align-top">
               <input
                 type="number"
@@ -111,7 +111,7 @@ export default function FilterCard({ filterFunction }: FilterCardProps) {
                     Math.min(200, Math.max(1, Number(e.target.value)))
                   )
                 }
-                className="border border-gray-300 rounded w-full p-2"
+                className="border border-gray-300 rounded w-full p-1.5 sm:p-2 text-sm sm:text-base"
               />
             </td>
           </tr>
@@ -120,7 +120,7 @@ export default function FilterCard({ filterFunction }: FilterCardProps) {
 
       <div className="mt-4 flex justify-end">
         <button
-          className="px-4 py-2 bg-[#00d1b2] text-white rounded font-semibold cursor-pointer hover:bg-[#00b89c] transition-colors"
+          className="px-3 sm:px-4 py-1.5 sm:py-2 bg-[#00d1b2] text-white rounded text-sm sm:text-base font-semibold cursor-pointer hover:bg-[#00b89c] transition-colors"
           onClick={() => filterFunction(orderVal, resultLimit, countryCode)}
         >
           Aplicar Filtro

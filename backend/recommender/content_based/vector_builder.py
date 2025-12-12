@@ -4,7 +4,7 @@ import pickle
 import numpy as np
 from scipy.sparse import lil_matrix, save_npz
 from sklearn.preprocessing import normalize
-from api.models import MvIaConceptView, MvLatamIaConceptView
+from api.models import MvIaConcept, MvLatamIaAuthorConcept, MvRecommendationAuthorPool
 
 
 def map_concepts(files_dir):
@@ -13,10 +13,10 @@ def map_concepts(files_dir):
     """
     # --- Simulación de carga de conceptos si el modelo no está definido aquí ---
     try:
-        # Intenta cargar el modelo MvIaConceptView si está disponible
-        concepts = MvIaConceptView.objects.values_list("id", flat=True).order_by("id")
+        # Intenta cargar el modelo MvIaConcept si está disponible
+        concepts = MvIaConcept.objects.values_list("id", flat=True).order_by("id")
     except ImportError:
-        print("ADVERTENCIA: MvIaConceptView no encontrado. Usando conceptos simulados.")
+        print("ADVERTENCIA: MvIaConcept no encontrado. Usando conceptos simulados.")
         concepts = [f'C{i}' for i in range(1124)] # Simulación de 1124 conceptos
     # --------------------------------------------------------------------------
     
@@ -43,7 +43,7 @@ def train_model(files_dir):
     
     # Cargar autores
     print("Cargando autores...")
-    authors_data = list(MvLatamIaConceptView.objects.all().order_by('author_id'))
+    authors_data = list(MvRecommendationAuthorPool.objects.all().order_by('author_id'))
     n_authors = len(authors_data)
 
     
