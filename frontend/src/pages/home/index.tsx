@@ -111,7 +111,7 @@ export default function Home() {
     const cleanId = authorVal.includes("openalex.org/")
       ? authorVal.split("openalex.org/")[1]
       : authorVal;
-    fetch(`http://127.0.0.1:8000/api/authors/${cleanId}/concepts/`)
+    fetch(`collabrecommender.dcc.uchile.cl/api/authors/${cleanId}/concepts/`)
       .then((res) => res.json())
       .then((data: Concept[]) => {
         const nuevos = data.filter(
