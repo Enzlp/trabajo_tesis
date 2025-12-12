@@ -708,21 +708,29 @@ class WorksRelatedWork(models.Model):
 
 
 # VISTAS MATERIALIZADAS
-class LatamAuthorView(models.Model):
+class MvLatamAuthor(models.Model):
     id = models.TextField(primary_key=True)
-    orcid = models.TextField()
-    display_name = models.TextField()
+    orcid = models.TextField(blank=True, null=True)
+    display_name = models.TextField(blank=True, null=True)
+    display_name_alternatives = SafeJSONField(blank=True, null=True)
+    works_count = models.IntegerField(blank=True, null=True)
+    cited_by_count = models.IntegerField(blank=True, null=True)
+    last_known_institution = models.ForeignKey(
+        Institution,
+        on_delete=models.DO_NOTHING,
+        db_column='last_known_institution',
+        related_name='mv_latam_authors_last_known'
+    )
+    works_api_url = models.TextField(blank=True, null=True)
+    updated_date = models.DateTimeField(blank=True, null=True)
     country_code = models.TextField()
-    institution_name = models.TextField()
-    works_count = models.IntegerField()
-    cited_by_count = models.IntegerField()
-
+    institution_name = models.TextField(blank=True, null=True)
+    
     class Meta:
         managed = False
-        db_table = 'latam_authors'
+        db_table = 'mv_latam_authors'
 
-
-class MvIaConceptView(models.Model):
+class MvIaConcept(models.Model):
 	id = models.TextField(primary_key=True)
 	display_name = models.TextField()
 	level = models.IntegerField()
@@ -734,24 +742,41 @@ class MvIaConceptView(models.Model):
 		managed = False
 		db_table = 'mv_ia_concepts'
 
-class MvLatamIaConceptView(models.Model):
+class MvLatamIaAuthorConcept(models.Model):
     author_id = models.CharField(max_length=255, primary_key=True)
     display_name = models.CharField(max_length=500)
     concept_ids = ArrayField(models.CharField(max_length=255))
     concept_tfs = ArrayField(models.FloatField())
-		#concept_scores = ArrayField(models.FloatField())
     
     class Meta:
         managed = False 
-        db_table = 'mv_latam_ia_authors_concepts_tf'
-				#db_table = 'mv_latam_ia_authors_concepts'
+        db_table = 'mv_latam_ia_authors_concepts'
 				
 
-class LatamIaCoauthorshipView(models.Model):
+class MvIaCoauthorshipLatam(models.Model):
 	coauthor_1 = models.CharField()
 	coauthor_2 = models.CharField()
 	shared_works = models.IntegerField()
 
 	class Meta: 
 		managed= False
-		db_table = 'latam_ia_coauthorships'
+		db_table = 'mv_ia_coauthorships_latam'
+
+class MvIaCoauthorship(models.Model):
+	coauthor_1 = models.CharField()
+	coauthor_2 = models.CharField()
+	shared_works = models.IntegerField()
+
+	class Meta: 
+		managed= False
+		db_table = 'mv_ia_coauthorships'
+
+class MvRecommendationAuthorPool(models.Model):
+	author_id = models.CharField(primary_key=True)
+	display_name = models.CharField()
+	concept_ids = ArrayField(models.CharField(max_length=255))
+	concept_tfs = ArrayField(models.BigIntegerField())
+
+	class Meta:
+		managed=False
+		db_table = 'mv_recommendation_author_pool'

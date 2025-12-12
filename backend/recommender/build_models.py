@@ -15,9 +15,9 @@ from recommender.content_based.vector_builder import map_concepts, train_model
 files_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "files")
 
 # Archivo de mapeo de conceptos
-#map_concepts(files_dir)
+map_concepts(files_dir)
 
-#train_model(files_dir)
+train_model(files_dir)
 
 
 # GRAPH
@@ -48,18 +48,21 @@ from recommender.collaborative_filtering.training_test import run_full_recommend
 #)
 
 # Hiperparametros 
-factors_list = [128, 200, 256]
-reg_list = [0.02, 0.05, 0.1, 0.2]
-iterations = 20  # mejor que 10
+#factors_list = [128, 200, 256]
+#reg_list = [0.02, 0.05, 0.1, 0.2]
+#iterations = 10  # mejor que 10
 
 # Ejecutar grid search CORRECTO
-out = run_full_recommendation_system(
-    factors_list=factors_list,
-    reg_list=reg_list,
-    iterations=iterations,
-    K=20,
-    sample_users_eval=20000,
-    random_state=42
-)
+#out = run_full_recommendation_system(
+#    factors_list=factors_list,
+#    reg_list=reg_list,
+#    iterations=iterations,
+#    K=20,
+#    sample_users_eval=10000,
+#    random_state=42,
+#    save_dir=files_dir,
+#    num_threads=0,
+#    use_gpu=False
+#)
 
-out["best_params"]
+#print(out)

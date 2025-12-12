@@ -2,8 +2,8 @@ from django.shortcuts import render
 
 # Create your views here.
 from rest_framework import viewsets, generics, status
-from .models import Author, MvIaConceptView, LatamAuthorView, Institution, Work, MvLatamIaConceptView, MvLatamIaConceptView, Concept
-from .serializers import AuthorSerializer, RecommendationListSerializer, GetRecommendationsRequestSerializer, MvIaConceptViewSerializer, MvLatamIaConceptViewSerializer, InstitutionSerializer, WorkSerializer
+from .models import Author, MvIaConcept, MvLatamAuthor, Institution, Work, MvLatamIaAuthorConcept, Concept, MvRecommendationAuthorPool
+from .serializers import AuthorSerializer, RecommendationListSerializer, GetRecommendationsRequestSerializer, MvIaConceptSerializer, AuthorsAutocompleteSerializer, InstitutionSerializer, WorkSerializer
 from recommender.hybrid_recommender import HybridRecommender
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -13,6 +13,7 @@ from recommender.content_based.queries import ContentBasedQueries
 from django.db.models import Q
 from django.db.models import Func, Value
 from django.db.models.fields import CharField
+import re
 
 class AuthorViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Author.objects.all()
@@ -79,10 +80,8 @@ class AuthorWorksView(APIView):
             "results": serializer.data,
             "count": len(serializer.data),
         })
+    
 # Views autocompletado
-
-import re
-
 def generar_patron_acronimo(query):
     """
     Convierte una cadena corta (ej: 'nlp') en un patrón de regex
@@ -102,13 +101,13 @@ def generar_patron_acronimo(query):
     return pattern
 
 class ConceptAutocomplete(generics.ListAPIView):
-    serializer_class = MvIaConceptViewSerializer
+    serializer_class = MvIaConceptSerializer
 
     def get_queryset(self):
         query = self.request.GET.get('search', '')
         
         if not query:
-            return MvIaConceptView.objects.none()
+            return MvIaConcept.objects.none()
 
         # --- A. Búsqueda por Acrónimo (NLP -> N.*L.*P.*) ---
         acronym_pattern = generar_patron_acronimo(query)
@@ -122,7 +121,7 @@ class ConceptAutocomplete(generics.ListAPIView):
         filtro_acronimo = Q(display_name__iregex=r'\y' + acronym_pattern)
 
         # 3. Combinar los filtros con OR (|)
-        queryset = MvIaConceptView.objects.filter(
+        queryset = MvIaConcept.objects.filter(
             filtro_normal | filtro_acronimo
         ).distinct() # Usamos distinct para evitar duplicados si la búsqueda coincide en ambos filtros
         
@@ -131,16 +130,15 @@ class ConceptAutocomplete(generics.ListAPIView):
 DE_ACENTUADO = 'áéíóúÁÉÍÓÚñÑ'
 A_NORMAL = 'aeiouAEIOUnN'
 
-class MvLatamIaConceptViewAutocomplete(generics.ListAPIView):
-    serializer_class = MvLatamIaConceptViewSerializer
+class AuthorsAutocompleteView(generics.ListAPIView):
+    serializer_class = AuthorsAutocompleteSerializer
 
     def get_queryset(self):
         query = self.request.GET.get('search', '')
         
         if not query:
-            return MvLatamIaConceptView.objects.none()
-
-        # 1. Normalizar la columna de la base de datos (Sin cambios)
+            return MvRecommendationAuthorPool.objects.none()
+        
         columna_normalizada = Func(
             'display_name',
             Value(DE_ACENTUADO),
@@ -149,21 +147,14 @@ class MvLatamIaConceptViewAutocomplete(generics.ListAPIView):
             output_field=CharField()
         )
 
-        # 2. Normalizar el término de búsqueda del usuario (Sin cambios)
-        # Ejemplo: Si query es 'Hernández', termino_limpio es 'Hernandez'.
         termino_limpio = query.translate(str.maketrans(DE_ACENTUADO, A_NORMAL))
-        
-        # 3. Construir el filtro para buscar en cualquier parte (icontains)
-        # Esto permite buscar por apellido o por cualquier palabra del concepto
-        
-        return MvLatamIaConceptView.objects.annotate(
-            # Anotamos el campo limpiado
-            display_name_normalized=columna_normalizada
-        ).filter(
-            # CAMBIO CLAVE AQUÍ: Usamos __icontains para buscar en cualquier parte del texto.
-            # Esto traduce a SQL: ...WHERE display_name_normalized ILIKE '%termino_limpio%'
-            display_name_normalized__icontains=termino_limpio
+
+        return (
+            MvRecommendationAuthorPool.objects
+            .annotate(display_name_normalized=columna_normalizada)
+            .filter(display_name_normalized__icontains=termino_limpio)
         )[:10]
+
 
 class RecommendationViewSet(APIView):
     """
@@ -216,7 +207,7 @@ class RecommendationViewSet(APIView):
         # FILTRO POR PAÍS
         if country_code:
             valid_author_ids = set(
-                LatamAuthorView.objects.filter(
+                MvLatamAuthor.objects.filter(
                     id__in=top_author_ids,
                     country_code=country_code
                 ).values_list('id', flat=True)
@@ -237,7 +228,7 @@ class RecommendationViewSet(APIView):
         top_author_ids = [aid for aid, _, _, _ in recommendations]
 
         # Query autores
-        authors_dict = LatamAuthorView.objects.filter(
+        authors_dict = MvLatamAuthor.objects.filter(
             id__in=top_author_ids
         ).only(
             'id','orcid','display_name','works_count','cited_by_count',
@@ -273,7 +264,7 @@ class RecommendationViewSet(APIView):
         cf_scores_dict = {aid: cf for aid, _, _, cf in recommendations}
 
         # Query conceptos top-3 por autor (TF-IDF sublineal)
-        concept_rows = MvLatamIaConceptView.objects.filter(
+        concept_rows = MvLatamIaAuthorConcept.objects.filter(
             author_id__in=top_author_ids
         )
 
@@ -357,7 +348,7 @@ class AuthorConceptsView(APIView):
     def get(self, request, author_id):
         author_prefix = "https://openalex.org/"
         concept_ids = (
-            MvLatamIaConceptView.objects
+            MvLatamIaAuthorConcept.objects
             .filter(author_id=f"{author_prefix}{author_id}")
             .values_list("concept_ids", flat=True)
             .first()

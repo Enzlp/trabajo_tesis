@@ -60,7 +60,7 @@ export default function Results() {
 	// Texto del tooltip
 	const infoMetrics =
 			"Este modelo es una suma ponderada de un modelo Content-Based (CB) y un modelo de Collaborative Filtering (CF). " +
-			"La combinación se hace sobre scores normalizados con Min-Max, para ponderar posiciones relativas. Los pesos deben sumar 1.";
+			"La combinación se hace sobre scores normalizados, para ponderar posiciones relativas. Puedes cambiar los pesos para poder priorizar recomendacion por interes o red. Los pesos deben sumar 1.";
 
 	const infoRecommendations = "Las recomendaciones se definen usando un modelo basado en contenido por afinidad temática y/o un modelo de filtrado colaborativo "+
 	"sobre las redes de colaboracion del autor ingresado, la elección de modelo se hace en base al input del usuario, pudiendo generarse recomendaciones individuales o un sistema híbrido dependiendo del caso. Los score definen relevancia en base a el maximo score de afinidad obtenido"+

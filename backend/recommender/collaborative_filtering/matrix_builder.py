@@ -1,4 +1,4 @@
-from api.models import LatamIaCoauthorshipView
+from api.models import MvIaCoauthorshipLatam
 import os
 import numpy as np
 from scipy.sparse import lil_matrix, csr_matrix, save_npz, load_npz
@@ -8,49 +8,80 @@ import pickle
 def rating_matrix(files_dir):
     """
     Construye una matriz dispersa de ratings autor x autor
-    a partir de LatamIaCoauthorshipView.
+    a partir de MVIaCoauthorshipLatam.
     """
-
     # 1. Obtener todos los registros
-    queryset = LatamIaCoauthorshipView.objects.all().values("coauthor_1", "coauthor_2", "shared_works")
-
+    queryset = MvIaCoauthorshipLatam.objects.all().values("coauthor_1", "coauthor_2", "shared_works")
+    
     # 2. Crear mappings de string ID a índices numéricos
     all_authors = set()
     for row in queryset:
         all_authors.add(row["coauthor_1"])
         all_authors.add(row["coauthor_2"])
-
+    
     author_list = sorted(all_authors)
     author_to_idx = {author: idx for idx, author in enumerate(author_list)}
     idx_to_author = {idx: author for author, idx in author_to_idx.items()}
-
     n_authors = len(author_list)
-    print(f"Total de autores: {n_authors}")
-
+    
+    print(f"Total de autores iniciales: {n_authors}")
+    
     # 3. Crear matriz dispersa vacía (LIL para construcción eficiente)
     R = lil_matrix((n_authors, n_authors), dtype=np.float32)
-
+    
     # 4. Llenar la matriz (simétrica)
     for row in queryset:
         i = author_to_idx[row["coauthor_1"]]
         j = author_to_idx[row["coauthor_2"]]
         rating = row["shared_works"]
-
         # Opcional: aplicar log(1 + x) para suavizar valores
         #rating = np.log1p(rating)
-
         R[i, j] = rating
         R[j, i] = rating  # matriz simétrica
-
-    # 5. Guardar matriz dispersa (CSR para implicit)
+    
+    # Convertir a CSR para cálculos eficientes
+    R_csr = R.tocsr()
+    
+    # 5. Filtrar autores con 1 o menos colaboraciones
+    # Contar número de colaboradores únicos por autor (valores > 0 en cada fila)
+    collaborators_per_author = np.array((R_csr > 0).sum(axis=1)).flatten()
+    authors_to_keep = collaborators_per_author > 3
+    n_removed = (~authors_to_keep).sum()
+    
+    print(f"Autores con ≤1 colaboración a eliminar: {n_removed}")
+    
+    if n_removed > 0:
+        # Filtrar matriz: mantener solo autores con 2+ colaboraciones
+        R_csr = R_csr[authors_to_keep][:, authors_to_keep]
+        
+        # Reconstruir mappings solo con autores que cumplen el criterio
+        kept_indices = np.where(authors_to_keep)[0]
+        new_author_list = [author_list[i] for i in kept_indices]
+        
+        author_to_idx = {author: new_idx for new_idx, author in enumerate(new_author_list)}
+        idx_to_author = {new_idx: author for author, new_idx in author_to_idx.items()}
+        
+        n_authors = len(new_author_list)
+        print(f"Autores después de filtrado: {n_authors}")
+    
+    # 6. Calcular estadísticas finales
+    total_cells = n_authors * n_authors
+    positive_cells = R_csr.nnz
+    density = (positive_cells / total_cells) * 100
+    
+    print(f"Cantidad de usuarios finales: {n_authors}")
+    print(f"Cantidad de interacciones (celdas con valor positivo): {positive_cells}")
+    print(f"Densidad de la matriz: {density:.4f}%")
+    
+    # 7. Guardar matriz dispersa (CSR para implicit)
     output_file = os.path.join(files_dir, "cf_rating_matrix.npz")
-    save_npz(output_file, R.tocsr())
+    save_npz(output_file, R_csr)
     print(f"Matriz guardada en {output_file}")
-
-    # 6. Guardar mappings
+    
+    # 8. Guardar mappings
     np.save(os.path.join(files_dir, "cf_author_to_idx.npy"), author_to_idx)
     np.save(os.path.join(files_dir, "cf_idx_to_author.npy"), idx_to_author)
-
+    
     return output_file
 
 

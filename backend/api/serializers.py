@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Author, MvIaConceptView, MvLatamIaConceptView, Institution, Work
+from .models import Author, MvIaConcept, MvLatamIaAuthorConcept, Institution, Work, MvRecommendationAuthorPool
 class AuthorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Author
@@ -43,23 +43,22 @@ class WorkSerializer(serializers.ModelSerializer):
         ]
 
 # Serializer autocompletado concepts
-class MvIaConceptViewSerializer(serializers.ModelSerializer):
+class MvIaConceptSerializer(serializers.ModelSerializer):
     class Meta:
-        model = MvIaConceptView
+        model = MvIaConcept
         fields = [
             "id",
             "display_name"
         ]
 
 # Serializer autocompletado de autores
-class MvLatamIaConceptViewSerializer(serializers.ModelSerializer):
+class AuthorsAutocompleteSerializer(serializers.ModelSerializer):
     class Meta:
-        model = MvLatamIaConceptView
+        model = MvRecommendationAuthorPool
         fields = [
             "author_id",
-            "display_name"
+            "display_name",
         ]
-
 # Serializers para recommendaciones
 class ConceptScoreSerializer(serializers.Serializer):
     concept_id = serializers.CharField()

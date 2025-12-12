@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import AuthorViewSet, RecommendationViewSet, ConceptAutocomplete, MvLatamIaConceptViewAutocomplete, InstitutionViewSet, AuthorWorksView, AuthorConceptsView
+from .views import AuthorViewSet, RecommendationViewSet, ConceptAutocomplete, AuthorsAutocompleteView, InstitutionViewSet, AuthorWorksView, AuthorConceptsView
 
 router = DefaultRouter()
 router.register(r'authors', AuthorViewSet)
@@ -12,5 +12,5 @@ urlpatterns = [
     path('', include(router.urls)),
     path('recommendation/', RecommendationViewSet.as_view(), name='recommendation'),
     path('concept/', ConceptAutocomplete.as_view(), name='concept-autocomplete'),
-    path('authorsearch/', MvLatamIaConceptViewAutocomplete.as_view(), name='author-autocomplete'),
+    path('authorsearch/', AuthorsAutocompleteView.as_view(), name='author-autocomplete'),
 ]
