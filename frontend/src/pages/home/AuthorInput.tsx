@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { User } from 'lucide-react';
+import { User } from "lucide-react";
 
 interface Author {
   author_id: string;
@@ -12,67 +12,91 @@ type AuthorInputProps = {
 };
 
 function AuthorInput({ onChangeValue, value }: AuthorInputProps) {
-  const [query, setQuery] = useState<string>("");
+  const [query, setQuery] = useState("");
   const [results, setResults] = useState<Author[]>([]);
-  const [highlightedIndex, setHighlightedIndex] = useState<number>(-1);
-  const isSelecting = useRef(false);
-  const dropdownRef = useRef<HTMLUListElement>(null);
-  const itemRefs = useRef<(HTMLLIElement | null)[]>([]);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [hasSelected, setHasSelected] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  // Reset query when the external value changes
+  const itemRefs = useRef<(HTMLLIElement | null)[]>([]);
+  const cacheRef = useRef<Map<string, Author[]>>(new Map());
+
+  /* Reset cuando el valor externo se limpia */
   useEffect(() => {
     if (value === "") {
       setQuery("");
       setResults([]);
       setHighlightedIndex(-1);
+      setHasSelected(false);
+      setIsOpen(false);
+      setLoading(false);
     }
   }, [value]);
 
+  /* Autocomplete con debounce + cache */
   useEffect(() => {
-    if (isSelecting.current) {
-      isSelecting.current = false;
+    if (hasSelected || !query) return;
+
+    // Limpiar resultados viejos al empezar nueva búsqueda
+    setResults([]);
+
+    // 1️⃣ Cache inmediato (UX instantánea)
+    if (cacheRef.current.has(query)) {
+      setResults(cacheRef.current.get(query)!);
+      setLoading(false);
       return;
     }
 
-    if (!query) {
-      setResults([]);
-      setHighlightedIndex(-1);
-      return;
-    }
+    const controller = new AbortController();
+
+    setLoading(true);
 
     const timeoutId = setTimeout(() => {
-      fetch(`https://collabrecommender.dcc.uchile.cl/api/authorsearch/?search=${query}`)
+      fetch(
+        `https://collabrecommender.dcc.uchile.cl/api/authorsearch/?search=${query}`,
+        { signal: controller.signal }
+      )
         .then((res) => res.json())
         .then((data: Author[]) => {
+          cacheRef.current.set(query, data); // 2️⃣ cache
           setResults(data);
           setHighlightedIndex(-1);
         })
-        .catch((err) => console.error(err));
-    }, 300);
+        .catch((err) => {
+          if (err.name !== "AbortError") console.error(err);
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    }, 50);
 
-    return () => clearTimeout(timeoutId);
-  }, [query]);
+    return () => {
+      controller.abort();
+      clearTimeout(timeoutId);
+    };
+  }, [query, hasSelected]);
 
-  // Auto-scroll inside dropdown
+  /* Auto-scroll */
   useEffect(() => {
     if (highlightedIndex >= 0 && itemRefs.current[highlightedIndex]) {
       itemRefs.current[highlightedIndex]?.scrollIntoView({
         block: "nearest",
-        behavior: "smooth"
       });
     }
   }, [highlightedIndex]);
 
   const handleSelect = (author: Author) => {
-    isSelecting.current = true;
+    setHasSelected(true);
     onChangeValue(author.author_id);
     setQuery(author.display_name);
     setResults([]);
+    setIsOpen(false);
     setHighlightedIndex(-1);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (results.length === 0) return;
+    if (!isOpen || results.length === 0) return;
 
     switch (e.key) {
       case "ArrowDown":
@@ -84,9 +108,7 @@ function AuthorInput({ onChangeValue, value }: AuthorInputProps) {
 
       case "ArrowUp":
         e.preventDefault();
-        setHighlightedIndex((prev) =>
-          prev > 0 ? prev - 1 : -1
-        );
+        setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : -1));
         break;
 
       case "Enter":
@@ -97,79 +119,80 @@ function AuthorInput({ onChangeValue, value }: AuthorInputProps) {
         break;
 
       case "Escape":
-        setResults([]);
-        setHighlightedIndex(-1);
+        setIsOpen(false);
         break;
     }
   };
 
   return (
     <div className="w-full relative">
-      {/* Icono izquierdo */}
       <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
 
-      {/* Input responsivo */}
       <input
-        id="author"
         type="text"
         placeholder="Ej: María García, Juan Pérez..."
         value={query}
         onChange={(e) => {
           const val = e.target.value;
+          setHasSelected(false);
           setQuery(val);
 
           if (val === "") {
             onChangeValue("");
+            setIsOpen(false);
+            setResults([]);
+            setLoading(false);
+            return;
           }
+
+          setIsOpen(true);
+          setLoading(true);
+          setResults([]); // Limpiar resultados viejos inmediatamente
         }}
         onKeyDown={handleKeyDown}
         className="
-          w-full
-          pl-10 pr-4 py-3
-          text-sm sm:text-base
-          border border-gray-300 
-          rounded-lg 
-          focus:ring-2 focus:ring-teal-500 focus:border-transparent
+          w-full pl-10 pr-4 py-3
+          border border-gray-300 rounded-lg
+          focus:ring-2 focus:ring-teal-500
           outline-none
-          transition
         "
       />
 
-      {/* Dropdown responsivo */}
-      {results.length > 0 && (
-        <ul
-          ref={dropdownRef}
-          className="
-            absolute top-full left-0 w-full
-            bg-white 
-            border border-gray-300 
-            rounded-b-lg
-            max-h-64 sm:max-h-72
-            overflow-y-auto 
-            z-20
-            shadow-md
-            mt-1
-            text-sm sm:text-base
-          "
-        >
-          {results.map((item, index) => (
-            <li
-              key={item.author_id}
-              ref={(el) => (itemRefs.current[index] = el)}
-              className={`
-                px-3 py-2 cursor-pointer 
-                transition-colors
-                ${index === highlightedIndex
-                  ? "bg-teal-100"
-                  : "hover:bg-gray-100"
-                }
-              `}
-              onClick={() => handleSelect(item)}
-              onMouseEnter={() => setHighlightedIndex(index)}
-            >
-              {item.display_name}
+      {isOpen && (
+        <ul className="
+          absolute top-full left-0 w-full
+          bg-white border border-gray-300
+          rounded-b-lg shadow-md mt-1
+          max-h-64 overflow-y-auto z-20
+        ">
+          {loading && (
+            <li className="px-3 py-2 text-gray-400">
+              Buscando autores…
             </li>
-          ))}
+          )}
+
+          {!loading && results.length === 0 && (
+            <li className="px-3 py-2 text-gray-400">
+              Sin resultados
+            </li>
+          )}
+
+          {!loading &&
+            results.map((item, index) => (
+              <li
+                key={item.author_id}
+                ref={(el) => {itemRefs.current[index] = el}}
+                className={`px-3 py-2 cursor-pointer ${
+                  index === highlightedIndex
+                    ? "bg-teal-100"
+                    : "hover:bg-gray-100"
+                }`}
+                onClick={() => handleSelect(item)}
+                onMouseEnter={() => setHighlightedIndex(index)}
+              >
+                {item.display_name}
+              </li>
+            ))}
         </ul>
       )}
     </div>

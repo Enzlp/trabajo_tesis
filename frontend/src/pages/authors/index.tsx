@@ -44,7 +44,7 @@ export default function Authors() {
     const authorUrl = `https://openalex.org/${authorId}`;
 
     const timeoutId = setTimeout(() => {
-      fetch(`http://collabrecommender.dcc.uchile.cl/api/authors/?id=${authorUrl}`)
+      fetch(`https://collabrecommender.dcc.uchile.cl/api/authors/?id=${authorUrl}`)
         .then((res) => res.json())
         .then(async (data: Author[]) => {
           const author = data[0];
@@ -53,7 +53,7 @@ export default function Authors() {
           if (author.last_known_institution) {
             try {
               const instRes = await fetch(
-                `http://collabrecommender.dcc.uchile.cl/api/institution/?id=${author.last_known_institution}`
+                `https://collabrecommender.dcc.uchile.cl/api/institution/?id=${author.last_known_institution}`
               );
               const instData: Institution[] = await instRes.json();
 

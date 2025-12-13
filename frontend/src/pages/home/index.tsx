@@ -1,102 +1,25 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, User, X } from 'lucide-react';
+import { Search, User } from 'lucide-react';
 import AuthorInput from "./AuthorInput";
+import ConceptInput from "./ConceptInput";
 
 interface Concept {
   id: number;
   display_name: string;
 }
 
-
 export default function Home() {
-  const [query, setQuery] = useState<string>("");
-  const [results, setResults] = useState<Concept[]>([]);
   const [selected, setSelected] = useState<Concept[]>([]);
-  const [authorVal, setAuthorVal] = useState<string>("")
+  const [authorVal, setAuthorVal] = useState<string>("");
   const [searchMode, setSearchMode] = useState<'both' | 'concepts' | 'author'>('both');
-  const [highlightedIndex, setHighlightedIndex] = useState<number>(-1);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
   
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (!query) {
-      setResults([]);
-      return;
-    }
-
-    const timeoutId = setTimeout(() => {
-      fetch(`https://collabrecommender.dcc.uchile.cl/api/concept/?search=${query}`)
-        .then((res) => res.json())
-        .then((data: Concept[]) => {
-          const filtered = data.filter(
-            (item) => !selected.some((s) => s.id === item.id)
-          );
-          setResults(filtered);
-          setHighlightedIndex(-1);
-        })
-        .catch((err) => console.error(err));
-    }, 300);
-
-    return () => clearTimeout(timeoutId);
-  }, [query, selected]);
-
-  useEffect(() => {
-    if (highlightedIndex >= 0 && itemRefs.current[highlightedIndex]) {
-      itemRefs.current[highlightedIndex]?.scrollIntoView({
-        block: 'nearest',
-        behavior: 'smooth'
-      });
-    }
-  }, [highlightedIndex]);
-
-  const addTag = (concept: Concept) => {
-    setSelected([...selected, concept]);
-    setQuery("");
-    setResults([]);
-    setHighlightedIndex(-1);
-  };
-
-  const removeTag = (id: number) => {
-    setSelected(selected.filter((item) => item.id !== id));
-  };
-
   const handleSearchModeChange = (mode: 'both' | 'concepts' | 'author') => {
     setSearchMode(mode);
-    setQuery("");
-    setResults([]);
     setSelected([]);
     setAuthorVal("");
-    setHighlightedIndex(-1);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (results.length === 0) return;
-
-    switch (e.key) {
-      case 'ArrowDown':
-        e.preventDefault();
-        setHighlightedIndex((prev) => 
-          prev < results.length - 1 ? prev + 1 : prev
-        );
-        break;
-      case 'ArrowUp':
-        e.preventDefault();
-        setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : -1));
-        break;
-      case 'Enter':
-        e.preventDefault();
-        if (highlightedIndex >= 0 && highlightedIndex < results.length) {
-          addTag(results[highlightedIndex]);
-        }
-        break;
-      case 'Escape':
-        setResults([]);
-        setHighlightedIndex(-1);
-        break;
-    }
   };
 
   const searchRecommended = (e: React.FormEvent) => {
@@ -111,7 +34,7 @@ export default function Home() {
     const cleanId = authorVal.includes("openalex.org/")
       ? authorVal.split("openalex.org/")[1]
       : authorVal;
-    fetch(`collabrecommender.dcc.uchile.cl/api/authors/${cleanId}/concepts/`)
+    fetch(`https://collabrecommender.dcc.uchile.cl/api/authors/${cleanId}/concepts/`)
       .then((res) => res.json())
       .then((data: Concept[]) => {
         const nuevos = data.filter(
@@ -121,10 +44,6 @@ export default function Home() {
       })
       .catch((err) => console.error(err));
   };
-
-  const cleanConcepts = () => {
-    setSelected([]);
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -195,75 +114,10 @@ export default function Home() {
           <form onSubmit={searchRecommended} className="bg-white rounded-xl border-2 border-gray-300 p-4 sm:p-8">
             {(searchMode === 'both' || searchMode === 'concepts') && (
               <div className="mb-6">
-                <label htmlFor="concepts" className="block mb-2 text-gray-700 text-sm sm:text-base">
-                  Conceptos de interés
-                </label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                  <input
-                    id="concepts"
-                    type="text"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder="Escribe un concepto..."
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none text-sm sm:text-base"
-                  />
-                  {results.length > 0 && (
-                    <div 
-                      ref={dropdownRef}
-                      className="absolute top-full z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                      {results.map((concept, index) => (
-                        <button
-                          key={concept.id}
-                          ref={(el) => (itemRefs.current[index] = el)}
-                          type="button"
-                          onClick={() => addTag(concept)}
-                          onMouseEnter={() => setHighlightedIndex(index)}
-                          className={`w-full text-left px-4 py-2 transition-colors text-sm sm:text-base ${
-                            index === highlightedIndex
-                              ? 'bg-teal-100'
-                              : 'hover:bg-teal-50'
-                          }`}
-                        >
-                          {concept.display_name}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                
-                {selected.length > 0 && (
-                  <div className="mt-3">
-                    <div className="flex flex-col sm:flex-row sm:justify-between gap-2 text-xs sm:text-sm text-gray-600 mb-2">
-                      <span>Conceptos seleccionados ({selected.length}):</span>
-                      <button 
-                        type="button"
-                        className="bg-indigo-400 hover:bg-indigo-600 px-3 sm:px-4 py-1 text-white rounded-lg cursor-pointer disabled:bg-gray-300 text-xs sm:text-sm w-full sm:w-auto" 
-                        onClick={cleanConcepts}>
-                        Limpiar
-                      </button>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {selected.map((concept) => (
-                        <span
-                          key={concept.id}
-                          className="inline-flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 bg-teal-50 text-teal-700 rounded-full border border-teal-200 text-xs sm:text-sm"
-                        >
-                          <span className="break-words">{concept.display_name}</span>
-                          <button
-                            type="button"
-                            onClick={() => removeTag(concept.id)}
-                            className="hover:bg-teal-100 rounded-full p-0.5 transition-colors flex-shrink-0"
-                            aria-label={`Remover ${concept.display_name}`}
-                          >
-                            <X className="w-3 h-3 sm:w-4 sm:h-4 cursor-pointer" />
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                <ConceptInput 
+                  selected={selected}
+                  onSelectedChange={setSelected}
+                />
               </div>
             )}
             
@@ -280,7 +134,10 @@ export default function Home() {
                 <label htmlFor="author" className="block mb-2 text-gray-700 text-sm sm:text-base">
                   Nombre del investigador
                 </label>
-                <AuthorInput onChangeValue={setAuthorVal} />
+                <AuthorInput 
+                  onChangeValue={setAuthorVal}
+                  value={authorVal}
+                />
               </div>
             )}
             
