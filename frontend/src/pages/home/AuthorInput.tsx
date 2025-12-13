@@ -49,6 +49,7 @@ function AuthorInput({ onChangeValue, value }: AuthorInputProps) {
     }
 
     const controller = new AbortController();
+    let isCurrentQuery = true; // 👈 Flag para detectar queries obsoletos
 
     setLoading(true);
 
@@ -59,19 +60,25 @@ function AuthorInput({ onChangeValue, value }: AuthorInputProps) {
       )
         .then((res) => res.json())
         .then((data: Author[]) => {
-          cacheRef.current.set(query, data); // 2️⃣ cache
-          setResults(data);
-          setHighlightedIndex(-1);
+          // Solo actualizar si este query sigue siendo el actual
+          if (isCurrentQuery) {
+            cacheRef.current.set(query, data); // 2️⃣ cache
+            setResults(data);
+            setHighlightedIndex(-1);
+          }
         })
         .catch((err) => {
           if (err.name !== "AbortError") console.error(err);
         })
         .finally(() => {
-          setLoading(false);
+          if (isCurrentQuery) {
+            setLoading(false);
+          }
         });
     }, 50);
 
     return () => {
+      isCurrentQuery = false; // 👈 Marcar este query como obsoleto
       controller.abort();
       clearTimeout(timeoutId);
     };
