@@ -10,7 +10,7 @@ from rest_framework.response import Response
 import math
 from recommender.content_based.queries import ContentBasedQueries
 
-from django.db.models import Q
+from django.db.models import Q, Subquery
 from django.db.models import Func, Value
 from django.db.models.fields import CharField
 import re
@@ -43,38 +43,38 @@ class InstitutionViewSet(viewsets.ReadOnlyModelViewSet):
 # View para works de un autor
 class AuthorWorksView(APIView):
     def get(self, request, author_id: str):
-        author_prefix = "https://openalex.org/"
         limit = int(request.query_params.get("limit", 100))
-
         if limit <= 0:
             return Response({
                 "results": [],
                 "count": 0,
             })
+        
+        try:
+            author_obj = Author.objects.get(id__endswith=author_id)
+        except Author.DoesNotExist:
+            return Response({
+                "results": [],
+                "count": 0,
+            })
 
-        # 1️⃣ Obtener los IDs de works desde WorkAuthorship
-        work_ids = (
-            WorkAuthorship.objects
-            .filter(author_id=f"{author_prefix}{author_id}")
-            .values_list("work_id", flat=True)
-            .distinct()
-        )
+        work_ids = Work.objects.filter(
+            authorships__author=author_obj
+        ).values_list('id', flat=True).distinct()
+        
+        works_qs = Work.objects.filter(
+            id__in=list(work_ids)
+        ).order_by("-publication_date", "-id")[:limit]
+        
 
-        # 2️⃣ Consultar los works
-        qs = (
-            Work.objects
-            .filter(id__in=work_ids)
-            .order_by("-publication_date", "-id")[:limit]
-        )
-
-        works = list(qs)
-        serializer = WorkSerializer(works, many=True)
-
+        works_list = list(works_qs)
+        
+        serializer = WorkSerializer(works_list, many=True)
+        
         return Response({
             "results": serializer.data,
-            "count": len(serializer.data),
+            "count": len(works_list),
         })
-
     
 # Views autocompletado
 def generar_patron_acronimo(query):

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import loading_animation from "../../assets/loading_animation.svg";
+import LoadingWorks from './LoadingWorks';
 import { ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface Work {
@@ -84,15 +84,7 @@ export default function AuthorWorks() {
 
   // Loading
   if (loading) {
-    return (
-      <div className="flex flex-col rounded-xl p-6 items-center justify-center">
-        <img
-          src={loading_animation}
-          alt="Cargando..."
-          className="w-16 h-16 animate-spin"
-        />
-      </div>
-    );
+    return <LoadingWorks />;
   }
 
   // Sin datos

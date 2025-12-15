@@ -1,6 +1,6 @@
 import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
-import loading_animation from "../../assets/loading_animation.svg";
+import LoadingAuthor from './LoadingAuthor';
 import { Building, MapPin, BookOpen, Award, ExternalLink } from "lucide-react";
 import AuthorWorks from "./AuthorWorks";
 
@@ -77,15 +77,7 @@ export default function Authors() {
   }, [authorId]);
 
   if (!authorInfo) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <img
-          src={loading_animation}
-          alt="Cargando..."
-          className="w-12 h-12 sm:w-16 sm:h-16 animate-spin"
-        />
-      </div>
-    );
+    return <LoadingAuthor />;
   }
 
   return (

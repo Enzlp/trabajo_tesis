@@ -1,5 +1,5 @@
 import { useState } from "react";
-import loading_animation from "../../assets/loading_animation.svg";
+import LoadingRecommendations from './LoadingRecommendations';
 import { useNavigate } from "react-router-dom";
 import { User, BookOpen, ExternalLink } from "lucide-react";
 
@@ -57,11 +57,7 @@ export default function RecommendedCard({ recs, loading }: RecommendedCardProps)
   };
 
   if ((!recs || recs.length === 0) && loading) {
-    return (
-      <div className="flex justify-center items-center p-6">
-        <img src={loading_animation} alt="Cargando..." className="w-16 h-16 animate-spin" />
-      </div>
-    );
+    return <LoadingRecommendations />;
   }
 
   if ((!recs || recs.length === 0) && !loading) {
