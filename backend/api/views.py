@@ -2,7 +2,7 @@ from django.shortcuts import render
 
 # Create your views here.
 from rest_framework import viewsets, generics, status
-from .models import Author, MvIaConcept, MvLatamAuthor, Institution, Work, MvLatamIaAuthorConcept, Concept, MvRecommendationAuthorPool
+from .models import Author, MvIaConcept, MvLatamAuthor, Institution, Work, MvLatamIaAuthorConcept, Concept, MvRecommendationAuthorPool, WorkAuthorship
 from .serializers import AuthorSerializer, RecommendationListSerializer, GetRecommendationsRequestSerializer, MvIaConceptSerializer, AuthorsAutocompleteSerializer, InstitutionSerializer, WorkSerializer
 from recommender.hybrid_recommender import HybridRecommender
 from rest_framework.views import APIView
@@ -45,41 +45,36 @@ class AuthorWorksView(APIView):
     def get(self, request, author_id: str):
         author_prefix = "https://openalex.org/"
         limit = int(request.query_params.get("limit", 100))
-        
-        
+
         if limit <= 0:
             return Response({
                 "results": [],
-                "next_last_date": None,
-                "next_last_id": None,
-                "has_more": False
+                "count": 0,
             })
-        
-        inner = (
-            Work.objects
-            .filter(authorships__author_id=f"{author_prefix}{author_id}")
-            .order_by("-publication_date", "-id")
-            .values("id")
-            .distinct()[:limit]
+
+        # 1️⃣ Obtener los IDs de works desde WorkAuthorship
+        work_ids = (
+            WorkAuthorship.objects
+            .filter(author_id=f"{author_prefix}{author_id}")
+            .values_list("work_id", flat=True)
+            .distinct()
         )
 
+        # 2️⃣ Consultar los works
         qs = (
             Work.objects
-            .filter(id__in=inner)
-            .order_by("-publication_date", "-id")
+            .filter(id__in=work_ids)
+            .order_by("-publication_date", "-id")[:limit]
         )
 
-                
-        # 🔹 Traer limit + 1 para saber si hay más
         works = list(qs)
-        
-
         serializer = WorkSerializer(works, many=True)
-        
+
         return Response({
             "results": serializer.data,
             "count": len(serializer.data),
         })
+
     
 # Views autocompletado
 def generar_patron_acronimo(query):
