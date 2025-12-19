@@ -1,5 +1,4 @@
 import { useEffect, useState, useRef } from "react";
-import { Search, X } from "lucide-react";
 
 interface Concept {
   id: number;
@@ -90,13 +89,6 @@ function ConceptInput({ selected, onSelectedChange }: ConceptInputProps) {
     setHighlightedIndex(-1);
   };
 
-  const removeTag = (id: number) => {
-    onSelectedChange(selected.filter((item) => item.id !== id));
-  };
-
-  const cleanConcepts = () => {
-    onSelectedChange([]);
-  };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!isOpen || results.length === 0) return;
@@ -135,7 +127,6 @@ function ConceptInput({ selected, onSelectedChange }: ConceptInputProps) {
       </label>
       
       <div className="relative">
-        <Search className="absolute left-3 top-3 w-5 h-5 text-gray-400 pointer-events-none" />
         <input
           id="concepts"
           type="text"
@@ -154,8 +145,8 @@ function ConceptInput({ selected, onSelectedChange }: ConceptInputProps) {
             setLoading(true);
           }}
           onKeyDown={handleKeyDown}
-          placeholder="Escribe un concepto..."
-          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none text-sm sm:text-base"
+          placeholder="Escribe un concepto en inglés..."
+          className="w-full pl-4 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none text-sm sm:text-base"
         />
         
         {isOpen && (
@@ -195,38 +186,7 @@ function ConceptInput({ selected, onSelectedChange }: ConceptInputProps) {
         )}
       </div>
 
-      {selected.length > 0 && (
-        <div className="mt-3">
-          <div className="flex flex-col sm:flex-row sm:justify-between gap-2 text-xs sm:text-sm text-gray-600 mb-2">
-            <span>Conceptos seleccionados ({selected.length}):</span>
-            <button
-              type="button"
-              className="bg-indigo-400 hover:bg-indigo-600 px-3 sm:px-4 py-1 text-white rounded-lg cursor-pointer disabled:bg-gray-300 text-xs sm:text-sm w-full sm:w-auto"
-              onClick={cleanConcepts}
-            >
-              Limpiar
-            </button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {selected.map((concept) => (
-              <span
-                key={concept.id}
-                className="inline-flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 bg-teal-50 text-teal-700 rounded-full border border-teal-200 text-xs sm:text-sm"
-              >
-                <span className="break-words">{concept.display_name}</span>
-                <button
-                  type="button"
-                  onClick={() => removeTag(concept.id)}
-                  className="hover:bg-teal-100 rounded-full p-0.5 transition-colors flex-shrink-0"
-                  aria-label={`Remover ${concept.display_name}`}
-                >
-                  <X className="w-3 h-3 sm:w-4 sm:h-4 cursor-pointer" />
-                </button>
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
+      
     </div>
   );
 }

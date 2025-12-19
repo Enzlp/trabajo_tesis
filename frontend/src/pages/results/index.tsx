@@ -1,4 +1,4 @@
-import { useLocation} from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import RecommendedCard from "./RecommendedCard";
 import FilterCard from "./FilterCard";
 import StatsCard from './StatsCard';
@@ -23,8 +23,8 @@ type Recommendation = {
   author_id: string;
   orcid: string | null;
   display_name: string;
-  country_code:string;
-  institution_name:string;
+  country_code: string;
+  institution_name: string;
   similarity_score: number;
   cb_score: number;
   cf_score: number;
@@ -34,298 +34,223 @@ type Recommendation = {
 };
 
 export default function Results() {
-	const location = useLocation();
-	const [loading, setLoading] = useState<boolean>(true) 
-	const [totalResult, setTotalResult] = useState<number>(0)
-	const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const location = useLocation();
+  const [loading, setLoading] = useState<boolean>(true);
+  const [totalResult, setTotalResult] = useState<number>(0);
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
 
-	//Definir payload de fetch
-	const [conceptList, setConceptList] = useState<Concept[]>([]);
-	const [authorId, setAuthorId] = useState<string>("");
+  const [conceptList, setConceptList] = useState<Concept[]>([]);
+  const [authorId, setAuthorId] = useState<string>("");
 
-	// Pesos modelos
-	const [peso1, setPeso1] = useState<number>(0.5);
-	const [peso2, setPeso2] = useState<number>(0.5);
+  const [peso1, setPeso1] = useState<number>(0.5);
+  const [peso2, setPeso2] = useState<number>(0.5);
 
-	// Estados para mantener los filtros aplicados
-	const [currentOrderBy, setCurrentOrderBy] = useState<string>("sim");
-	const [currentLimit, setCurrentLimit] = useState<number>(50);
-	const [currentCountry, setCurrentCountry] = useState<string>("");
+  const [currentOrderBy, setCurrentOrderBy] = useState<string>("sim");
+  const [currentLimit, setCurrentLimit] = useState<number>(50);
+  const [currentCountry, setCurrentCountry] = useState<string>("");
 
-	// Estado para mostrar/ocultar tooltip
-	const [showInfo, setShowInfo] = useState(false);
-	const [showInfoRec, setShowInfoRec] = useState(false);
-	const [showInfoFilter, setShowInfoFilter] = useState(false);
+  // Estados para tooltips
+  const [showInfo, setShowInfo] = useState(false);
+  const [showInfoRec, setShowInfoRec] = useState(false);
+  const [showInfoFilter, setShowInfoFilter] = useState(false);
 
-	// Texto del tooltip
-	const infoMetrics =
-			"Este modelo es una suma ponderada de un modelo Content-Based (CB) y un modelo de Collaborative Filtering (CF). " +
-			"La combinación se hace sobre scores normalizados, para ponderar posiciones relativas. Puedes cambiar los pesos para poder priorizar recomendacion por interes o red. Los pesos deben sumar 1.";
+  const infoMetrics =
+    "Este modelo combina un enfoque basado en contenido (afinidad temática) y un enfoque de filtrado colaborativo (red de coautoría). Los scores se normalizan y se combinan según los pesos que definas, permitiendo priorizar recomendaciones por interés o por red. Los pesos deben sumar 1.";
 
-	const infoRecommendations = "Las recomendaciones se definen usando un modelo basado en contenido por afinidad temática y/o un modelo de filtrado colaborativo "+
-	"sobre las redes de colaboracion del autor ingresado, la elección de modelo se hace en base al input del usuario, pudiendo generarse recomendaciones individuales o un sistema híbrido dependiendo del caso. Los score definen relevancia en base a el maximo score de afinidad obtenido"+
-	" usando una normalizacion min-max para cada modelo y el score total es la ponderacion en base a pesos definidos.";
+  const infoRecommendations =
+    "Las recomendaciones se generan combinando afinidad temática, basada en los intereses que ingreses, y la red de colaboración del autor seleccionado. Dependiendo de tu elección, se usa uno de los modelos o un sistema híbrido, y los scores indican la relevancia de cada recomendación, normalizados para poder compararlas entre modelos.";
 
-	const infoFilter = "Se pueden definir filtros para ordenar las recomendaciones en base a score de similitud (posicion relativa), n° de citas y n° de trabajos. Tambien se puede "
-	+"filtrar las recomendaciones en base al pais objetivo, y definir un limite de resultados a traer hasta 200. Este filtrado y ordenamiento se hace sobre el total de autores a recomendar.";
+  const infoFilter =
+    "Puedes ordenar y filtrar las recomendaciones según la similitud temática, el número de citas o el número de trabajos. También es posible filtrar por país y limitar la cantidad de resultados hasta 200. Estos filtros y el ordenamiento se aplican sobre el total de autores recomendados.";
 
-	useEffect(() => {
-		const cList: Concept[] = location.state?.conceptList || [];
-		const aId: string = location.state?.authorId || "";
+  useEffect(() => {
+    const cList: Concept[] = location.state?.conceptList || [];
+    const aId: string = location.state?.authorId || "";
 
-		setConceptList(cList);
-		setAuthorId(aId);
+    setConceptList(cList);
+    setAuthorId(aId);
 
-		const fetchRecommendations = async () => {
-			try {
-				const payload: any = {};
+    const fetchRecommendations = async () => {
+      try {
+        const payload: any = {};
+        if (cList.length > 0) payload.concept_vector = cList;
+        if (aId !== "") payload.author_id = aId;
 
-				if (cList.length > 0) {
-					payload.concept_vector = cList;
-				}
+        const response = await fetch(
+          "https://collabrecommender.dcc.uchile.cl/api/recommendation/",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          }
+        );
 
-				if (aId !== "") {
-					payload.author_id = aId;
-				}
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
-				const response = await fetch('https://collabrecommender.dcc.uchile.cl/api/recommendation/', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify(payload),
-				});
+        const data = await response.json();
+        setRecommendations(data.recommendations);
+        setTotalResult(data.total_recommendations);
+        setLoading(false);
+      } catch (err) {
+        if (err instanceof Error) console.log(err.message);
+      }
+    };
 
-				if (!response.ok) {
-					throw new Error(`HTTP error! status: ${response.status}`);
-				}
+    fetchRecommendations();
+  }, [location.state?.conceptList]);
 
-				const data = await response.json();
-				setRecommendations(data.recommendations);
-				setTotalResult(data.total_recommendations);
-				setLoading(false);
+  const applyFilters = async (by: string, limit: number, country: string) => {
+    try {
+      setLoading(true);
+      setRecommendations([]);
+      setCurrentOrderBy(by);
+      setCurrentLimit(limit);
+      setCurrentCountry(country);
 
+      const payload: any = {};
+      if (conceptList.length > 0) payload.concept_vector = conceptList;
+      if (authorId !== "") payload.author_id = authorId;
 
-			} catch (err) {
-				if (err instanceof Error) console.log(err.message);
-			}
-		};
-		
-		fetchRecommendations();
-	}, [location.state?.conceptList]);
+      payload.order_by = by;
+      payload.limit = limit;
+      if (country !== "") payload.country_code = country;
+      if (conceptList.length > 0 && authorId !== "") {
+        payload.alpha = peso1;
+        payload.beta = peso2;
+      }
 
-	// Función para aplicar filtros
-	const applyFilters = async (by: string, limit: number, country: string) => {
-		try {
-			setLoading(true);
+      const response = await fetch(
+        "https://collabrecommender.dcc.uchile.cl/api/recommendation/",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
 
-			setRecommendations([]);
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await response.json();
+      setRecommendations(data.recommendations);
+      setTotalResult(data.total_recommendations);
+      setLoading(false);
+    } catch (err) {
+      if (err instanceof Error) console.log(err.message);
+      setLoading(false);
+    }
+  };
 
-			setCurrentOrderBy(by);
-			setCurrentLimit(limit);
-			setCurrentCountry(country);
+  const weightedFetch = async () => {
+    try {
+      setLoading(true);
+      setRecommendations([]);
 
-			const payload: any = {};
-			
-			if (conceptList.length > 0) {
-				payload.concept_vector = conceptList;
-			}
+      const payload: any = {};
+      payload.concept_vector = conceptList;
+      payload.author_id = authorId;
+      payload.alpha = peso1;
+      payload.beta = peso2;
+      payload.order_by = currentOrderBy;
+      payload.limit = currentLimit;
+      if (currentCountry !== "") payload.country_code = currentCountry;
 
-			if (authorId !== "") {
-				payload.author_id = authorId;
-			}
+      const response = await fetch(
+        "https://collabrecommender.dcc.uchile.cl/api/recommendation/",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
 
-			payload.order_by = by;
-			payload.limit = limit;
-			
-			if (country !== "") {
-				payload.country_code = country;
-			}
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await response.json();
+      setRecommendations(data.recommendations);
+      setTotalResult(data.total_recommendations);
+      setLoading(false);
+    } catch (err) {
+      if (err instanceof Error) console.log(err.message);
+    }
+  };
 
-			if (conceptList.length > 0 && authorId !== "") {
-				payload.alpha = peso1;
-				payload.beta = peso2;
-			}
-
-			const response = await fetch('https://collabrecommender.dcc.uchile.cl/api/recommendation/', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(payload),
-			});
-
-			if (!response.ok) {
-				throw new Error(`HTTP error! status: ${response.status}`);
-			}
-
-			const data = await response.json();
-			setRecommendations(data.recommendations);
-			setTotalResult(data.total_recommendations);
-			setLoading(false);
-
-		} catch (err) {
-			if (err instanceof Error) console.log(err.message);
-			setLoading(false);
-		}
-	};
-
-	// Funcion para hacer fetch con pesos manteniendo los filtros
-	const weightedFetch = async () => {
-		try {
-			setLoading(true);
-			setRecommendations([]);
-
-			const payload: any = {};
-			payload.concept_vector = conceptList;
-			payload.author_id = authorId;
-			payload.alpha = peso1;
-			payload.beta = peso2;
-
-			payload.order_by = currentOrderBy;
-			payload.limit = currentLimit;
-			
-			if (currentCountry !== "") {
-				payload.country_code = currentCountry;
-			}
-
-			const response = await fetch('https://collabrecommender.dcc.uchile.cl/api/recommendation/', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(payload),
-			});
-
-			if (!response.ok) {
-				throw new Error(`HTTP error! status: ${response.status}`);
-			}
-
-			const data = await response.json();
-			setRecommendations(data.recommendations);
-			setTotalResult(data.total_recommendations);
-			setLoading(false);
-		} catch (err) {
-			if (err instanceof Error) console.log(err.message);
-		}
-	}
-
-return (
-  <div className="min-h-screen px-3 sm:px-6 md:px-8 py-2 flex flex-col m-2 sm:m-4">
-  
-    <div className="flex flex-col lg:flex-row w-full gap-4">
-      {/* Columna izquierda - Recomendaciones */}
-      <div className="flex flex-col w-full lg:w-6/10">
-        <div className="flex items-center gap-2 relative mb-4">
-          <h1 className="text-xl sm:text-2xl font-bold">Investigadores recomendados</h1>
-          <div
-            onClick={() => setShowInfoRec(!showInfoRec)}
-            className="relative cursor-pointer"
-          >
-            <img 
-              src={InfoCircle}
-              alt="info"
-              className="w-4 h-4 sm:w-5 sm:h-5"
-            />
-
-            {showInfoRec && (
-              <>
-                {/* Overlay para cerrar al hacer click fuera */}
-                <div 
-                  className="fixed inset-0 z-10"
-                  onClick={() => setShowInfoRec(false)}
-                />
-                <div
-                  className="absolute z-20 w-64 sm:w-72 p-3 right-0 sm:left-6 top-6 sm:top-1/2 sm:-translate-y-1/2
-                              bg-gray-800 text-white text-xs rounded-lg shadow-lg"
-                >
-                  {infoRecommendations}
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-        <RecommendedCard recs={recommendations} loading={loading}/>
-      </div>
-      
-      {/* Columna derecha - Filtros y métricas */}
-      <div className="flex flex-col w-full lg:w-4/10">
-        <div className="flex flex-col">
+  return (
+    <div className="min-h-screen px-3 sm:px-6 md:px-8 py-2 flex flex-col m-2 sm:m-4">
+      <div className="flex flex-col lg:flex-row w-full gap-4">
+        {/* Columna izquierda - Recomendaciones */}
+        <div className="flex flex-col w-full lg:w-6/10">
           <div className="flex items-center gap-2 relative mb-4">
-            <h1 className="text-xl sm:text-2xl font-bold">Filtros</h1>
+            <h1 className="text-xl sm:text-2xl font-bold">Investigadores recomendados</h1>
             <div
-              onClick={() => setShowInfoFilter(!showInfoFilter)}
+              onMouseEnter={() => setShowInfoRec(true)}
+              onMouseLeave={() => setShowInfoRec(false)}
               className="relative cursor-pointer"
             >
-              <img 
-                src={InfoCircle}
-                alt="info"
-                className="w-4 h-4 sm:w-5 sm:h-5"
-              />
-
-              {showInfoFilter && (
-                <>
-                  <div 
-                    className="fixed inset-0 z-10"
-                    onClick={() => setShowInfoFilter(false)}
-                  />
-                  <div
-                    className="absolute z-20 w-64 sm:w-72 p-3 right-0 sm:left-6 top-6 sm:top-1/2 sm:-translate-y-1/2
-                                bg-gray-800 text-white text-xs rounded-lg shadow-lg"
-                  >
-                    {infoFilter}
-                  </div>
-                </>
+              <img src={InfoCircle} alt="info" className="w-4 h-4 sm:w-5 sm:h-5" />
+              {showInfoRec && (
+                <div className="absolute z-20 w-64 sm:w-72 p-3 right-0 sm:left-6 top-6 sm:top-1/2 sm:-translate-y-1/2 bg-gray-800 text-white text-xs rounded-lg shadow-lg">
+                  {infoRecommendations}
+                </div>
               )}
             </div>
           </div>
-          <FilterCard filterFunction={applyFilters}/>
+          <RecommendedCard recs={recommendations} loading={loading} />
         </div>
-        <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row gap-4">
-          {conceptList.length > 0 && authorId !== "" && (
-            <div className="flex flex-col w-full sm:w-6/10 lg:w-full xl:w-6/10">
 
-              {/* Título Metrics + icono con tooltip */}
-              <div className="flex items-center gap-2 relative">
-                <h1 className="text-xl sm:text-2xl font-bold my-4">Metrics</h1>
+        {/* Columna derecha - Filtros y métricas */}
+        <div className="flex flex-col w-full lg:w-4/10">
+          <div className="flex flex-col">
+            <div className="flex items-center gap-2 relative mb-4">
+              <h1 className="text-xl sm:text-2xl font-bold">Filtros</h1>
+              <div
+                onMouseEnter={() => setShowInfoFilter(true)}
+                onMouseLeave={() => setShowInfoFilter(false)}
+                className="relative cursor-pointer"
+              >
+                <img src={InfoCircle} alt="info" className="w-4 h-4 sm:w-5 sm:h-5" />
+                {showInfoFilter && (
+                  <div className="absolute z-20 w-64 sm:w-72 p-3 right-0 sm:left-6 top-6 sm:top-1/2 sm:-translate-y-1/2 bg-gray-800 text-white text-xs rounded-lg shadow-lg">
+                    {infoFilter}
+                  </div>
+                )}
+              </div>
+            </div>
+            <FilterCard filterFunction={applyFilters} />
+          </div>
 
-                {/* Ícono con click */}
-                <div
-                  onClick={() => setShowInfo(!showInfo)}
-                  className="relative cursor-pointer"
-                >
-                  <img 
-                    src={InfoCircle}
-                    alt="info"
-                    className="w-4 h-4 sm:w-5 sm:h-5"
-                  />
-
-                  {showInfo && (
-                    <>
-                      <div 
-                        className="fixed inset-0 z-10"
-                        onClick={() => setShowInfo(false)}
-                      />
-                      <div
-                        className="absolute z-20 w-64 sm:w-72 p-3 right-0 sm:left-6 top-6 sm:top-1/2 sm:-translate-y-1/2
-                                   bg-gray-800 text-white text-xs rounded-lg shadow-lg"
-                      >
+          <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row gap-4">
+            {conceptList.length > 0 && authorId !== "" && (
+              <div className="flex flex-col w-full sm:w-6/10 lg:w-full xl:w-6/10">
+                <div className="flex items-center gap-2 relative">
+                  <h1 className="text-xl sm:text-2xl font-bold my-4">Ajuste de pesos del modelo</h1>
+                  <div
+                    onMouseEnter={() => setShowInfo(true)}
+                    onMouseLeave={() => setShowInfo(false)}
+                    className="relative cursor-pointer"
+                  >
+                    <img src={InfoCircle} alt="info" className="w-4 h-4 sm:w-5 sm:h-5" />
+                    {showInfo && (
+                      <div className="absolute z-20 w-64 sm:w-72 p-3 right-0 sm:left-6 top-6 sm:top-1/2 sm:-translate-y-1/2 bg-gray-800 text-white text-xs rounded-lg shadow-lg">
                         {infoMetrics}
                       </div>
-                    </>
-                  )}
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              <MetricsCard 
-                peso1={peso1} 
-                peso2={peso2} 
-                setPeso1={setPeso1} 
-                setPeso2={setPeso2} 
-                fetchFunction={weightedFetch}
-              />
+                <MetricsCard
+                  peso1={peso1}
+                  peso2={peso2}
+                  setPeso1={setPeso1}
+                  setPeso2={setPeso2}
+                  fetchFunction={weightedFetch}
+                />
+              </div>
+            )}
+            <div className="flex flex-col w-full sm:w-4/10 lg:w-full xl:w-4/10">
+              <h1 className="text-xl sm:text-2xl font-bold my-4">Resultados</h1>
+              <StatsCard totalResult={totalResult} />
             </div>
-          )}
-          <div className="flex flex-col w-full sm:w-4/10 lg:w-full xl:w-4/10">
-            <h1 className="text-xl sm:text-2xl font-bold my-4">Stats</h1>
-            <StatsCard totalResult={totalResult} />
           </div>
         </div>
       </div>
     </div>
-  </div>
-)};
+  );
+}

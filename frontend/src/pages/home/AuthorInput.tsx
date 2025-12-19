@@ -1,5 +1,4 @@
 import { useEffect, useState, useRef } from "react";
-import { User } from "lucide-react";
 
 interface Author {
   author_id: string;
@@ -7,11 +6,12 @@ interface Author {
 }
 
 type AuthorInputProps = {
-  onChangeValue: (nuevoValor: string) => void;
-  value?: string;
+  value?: string;          // author_id
+  displayName?: string;    // nombre del autor seleccionado
+  onChangeValue: (authorId: string, displayName: string) => void;
 };
 
-function AuthorInput({ onChangeValue, value }: AuthorInputProps) {
+function AuthorInput({ onChangeValue, value, displayName }: AuthorInputProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Author[]>([]);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
@@ -24,7 +24,15 @@ function AuthorInput({ onChangeValue, value }: AuthorInputProps) {
 
   /* Reset cuando el valor externo se limpia */
   useEffect(() => {
-    if (value === "") {
+    // Si hay un autor seleccionado, mostrar su display_name
+    if (displayName) {
+      setQuery(displayName);
+      setHasSelected(true);
+      setIsOpen(false);
+    }
+
+    // Solo resetear si value es vacío
+    if (!value) {
       setQuery("");
       setResults([]);
       setHighlightedIndex(-1);
@@ -32,7 +40,8 @@ function AuthorInput({ onChangeValue, value }: AuthorInputProps) {
       setIsOpen(false);
       setLoading(false);
     }
-  }, [value]);
+  }, [value, displayName]);
+
 
   /* Autocomplete con debounce + cache */
   useEffect(() => {
@@ -49,7 +58,7 @@ function AuthorInput({ onChangeValue, value }: AuthorInputProps) {
     }
 
     const controller = new AbortController();
-    let isCurrentQuery = true; // 👈 Flag para detectar queries obsoletos
+    let isCurrentQuery = true; 
 
     setLoading(true);
 
@@ -78,7 +87,7 @@ function AuthorInput({ onChangeValue, value }: AuthorInputProps) {
     }, 50);
 
     return () => {
-      isCurrentQuery = false; // 👈 Marcar este query como obsoleto
+      isCurrentQuery = false; 
       controller.abort();
       clearTimeout(timeoutId);
     };
@@ -95,12 +104,14 @@ function AuthorInput({ onChangeValue, value }: AuthorInputProps) {
 
   const handleSelect = (author: Author) => {
     setHasSelected(true);
-    onChangeValue(author.author_id);
+    onChangeValue(author.author_id, author.display_name); 
     setQuery(author.display_name);
     setResults([]);
     setIsOpen(false);
     setHighlightedIndex(-1);
   };
+
+
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!isOpen || results.length === 0) return;
@@ -133,8 +144,6 @@ function AuthorInput({ onChangeValue, value }: AuthorInputProps) {
 
   return (
     <div className="w-full relative">
-      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
-
       <input
         type="text"
         placeholder="Ej: María García, Juan Pérez..."
@@ -145,7 +154,7 @@ function AuthorInput({ onChangeValue, value }: AuthorInputProps) {
           setQuery(val);
 
           if (val === "") {
-            onChangeValue("");
+            onChangeValue("", "");
             setIsOpen(false);
             setResults([]);
             setLoading(false);
@@ -158,7 +167,7 @@ function AuthorInput({ onChangeValue, value }: AuthorInputProps) {
         }}
         onKeyDown={handleKeyDown}
         className="
-          w-full pl-10 pr-4 py-3
+          w-full pl-4 pr-4 py-3
           border border-gray-300 rounded-lg
           focus:ring-2 focus:ring-teal-500
           outline-none

@@ -11,7 +11,6 @@ function App() {
     <Router>
       <div className="flex flex-col w-full h-full">
         <Navbar />
-        <hr className="my-4 border-t border-gray-200" />
 
         <Routes>
           <Route path = "/" element = {<Home />} />

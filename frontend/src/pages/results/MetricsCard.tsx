@@ -41,7 +41,7 @@ export default function MetricsCard({peso1,peso2, setPeso1, setPeso2, fetchFunct
         </colgroup>
         <tbody>
           <tr>
-            <td className="text-sm sm:text-base">Peso modelo CB:</td>
+            <td className="text-sm sm:text-base">Afinidad temática:</td>
             <td>
               <input 
                 type="number"
@@ -55,7 +55,7 @@ export default function MetricsCard({peso1,peso2, setPeso1, setPeso2, fetchFunct
             </td>
           </tr>
           <tr>
-            <td className="text-sm sm:text-base">Peso modelo CF:</td>
+            <td className="text-sm sm:text-base">Red de colaboración:</td>
             <td>
               <input 
                 type="number"
@@ -76,7 +76,7 @@ export default function MetricsCard({peso1,peso2, setPeso1, setPeso2, fetchFunct
           className="px-3 sm:px-4 py-1.5 sm:py-2 bg-[#00d1b2] text-white rounded text-sm sm:text-base font-semibold cursor-pointer hover:bg-[#00b89c] transition-colors"
           onClick={fetchFunction}
         >
-          Cambiar Pesos
+          Aplicar Pesos
         </button>
       </div>
     </div>

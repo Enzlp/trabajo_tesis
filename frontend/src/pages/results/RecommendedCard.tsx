@@ -111,7 +111,7 @@ export default function RecommendedCard({ recs, loading }: RecommendedCardProps)
                 {/* Score relativo */}
                 <div className="flex items-center px-3 sm:px-4 py-1.5 sm:py-2 bg-teal-50 rounded-lg border border-teal-200 w-full md:w-auto">
                   <div>
-                    <div className="text-xs sm:text-sm text-gray-600">Score Relativo</div>
+                    <div className="text-xs sm:text-sm text-gray-600">Relevancia total</div>
                     <div className="text-teal-600 text-sm sm:text-base font-semibold">
                       {(rec.similarity_score * 100).toFixed(2)}%
                     </div>
@@ -120,8 +120,8 @@ export default function RecommendedCard({ recs, loading }: RecommendedCardProps)
               </div>
 
               <div className="flex flex-wrap gap-3 sm:gap-6 mb-2 text-xs sm:text-sm text-gray-600">
-                <p>Score modelo CB: {rec.cb_score === 0 ? "-" : `${(rec.cb_score * 100).toFixed(2)}%`}</p>
-                <p>Score modelo CF: {rec.cf_score === 0 ? "-" : `${(rec.cf_score * 100).toFixed(2)}%`}</p>
+                <p>Afinidad temática (CB): {rec.cb_score === 0 ? "-" : `${(rec.cb_score * 100).toFixed(2)}%`}</p>
+                <p>Red de colaboración (CF): {rec.cf_score === 0 ? "-" : `${(rec.cf_score * 100).toFixed(2)}%`}</p>
               </div>
 
               {/* Conceptos */}
