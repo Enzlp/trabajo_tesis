@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import LoadingWorks from './LoadingWorks';
-import { ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
+import { ExternalLink, ChevronLeft, ChevronRight, BookOpen } from "lucide-react";
 
 interface Work {
   cited_by_count: number;
@@ -25,13 +25,11 @@ export default function AuthorWorks() {
 
   const itemsPerPage = 10;
 
-  // Calcular paginación local
   const totalPages = Math.ceil(allWorks.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const currentWorks = allWorks.slice(startIndex, endIndex);
 
-  // Fetch inicial
   useEffect(() => {
     if (!authorId) return;
 
@@ -77,17 +75,11 @@ export default function AuthorWorks() {
   };
 
   const handlePageClick = (page: number) => setCurrentPage(page);
-  const handleNext = () =>
-    currentPage < totalPages && setCurrentPage((p) => p + 1);
-  const handlePrev = () =>
-    currentPage > 1 && setCurrentPage((p) => p - 1);
+  const handleNext = () => currentPage < totalPages && setCurrentPage((p) => p + 1);
+  const handlePrev = () => currentPage > 1 && setCurrentPage((p) => p - 1);
 
-  // Loading
-  if (loading) {
-    return <LoadingWorks />;
-  }
+  if (loading) return <LoadingWorks />;
 
-  // Sin datos
   if (!allWorks.length) {
     return (
       <div className="flex flex-col border-2 border-gray-300 rounded-xl p-6">
@@ -97,27 +89,27 @@ export default function AuthorWorks() {
   }
 
   return (
-    <div className="border-2 border-gray-300 rounded-xl overflow-hidden">
+    <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
 
       {/* Header */}
-      <div className="p-6 border-b border-gray-200">
-        <h2 className="text-xl mb-1">Publicaciones Recientes</h2>
+      <div className="p-6 border-b border-gray-200 bg-gray-50 flex flex-col">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-lg flex items-center justify-center">
+            <BookOpen className="w-5 h-5 text-white" />
+          </div>
+          <h2 className="text-xl font-semibold">Publicaciones Recientes</h2>
+        </div>
         <p className="text-gray-600 text-sm sm:text-base">
-          Mostrando {startIndex + 1}-{Math.min(endIndex, allWorks.length)} de{" "}
-          {allWorks.length} publicaciones
+          Mostrando {startIndex + 1}-{Math.min(endIndex, allWorks.length)} de {allWorks.length} publicaciones
         </p>
       </div>
 
-      {/* RESPONSIVO: Cards en móvil / tabla en pantallas grandes */}
+
+      {/* Cards móvil */}
       <div className="block lg:hidden p-4 space-y-4">
         {currentWorks.map((work) => (
-          <div
-            key={work.id}
-            className="border rounded-lg p-4 bg-white shadow-sm"
-          >
-            <h3 className="font-semibold text-base mb-1 break-words">
-              {work.title || work.display_name}
-            </h3>
+          <div key={work.id} className="border rounded-2xl p-4 bg-white shadow-md hover:shadow-lg transition-shadow">
+            <h3 className="font-semibold text-base mb-1 break-words">{work.title || work.display_name}</h3>
 
             {work.is_retracted && (
               <span className="inline-block px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs mb-2">
@@ -125,39 +117,29 @@ export default function AuthorWorks() {
               </span>
             )}
 
-            <p className="text-sm text-gray-600">
-              <strong>Año:</strong> {work.publication_year || "N/A"}
-            </p>
+            <p className="text-sm text-gray-600"><strong>Año:</strong> {work.publication_year || "N/A"}</p>
 
             <p className="text-sm mt-1">
               <span
-                className={`inline-block px-2 py-1 rounded text-xs ${getWorkTypeColor(
-                  work.type
-                )}`}
+                className={`inline-block px-2 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${getWorkTypeColor(work.type)}`}
               >
                 {work.type}
               </span>
             </p>
 
-            <p className="text-sm text-gray-700 mt-2">
-              <strong>Citas:</strong> {work.cited_by_count.toLocaleString()}
-            </p>
+
+            <p className="text-sm text-gray-700 mt-2"><strong>Citas:</strong> {work.cited_by_count.toLocaleString()}</p>
 
             <div className="mt-3 flex flex-col gap-1">
               {work.doi && (
                 <a
-                  href={
-                    work.doi.startsWith("http")
-                      ? work.doi
-                      : `https://doi.org/${work.doi}`
-                  }
+                  href={work.doi.startsWith("http") ? work.doi : `https://doi.org/${work.doi}`}
                   target="_blank"
                   className="text-teal-600 hover:text-teal-700 text-sm inline-flex items-center gap-1"
                 >
                   DOI <ExternalLink className="w-3 h-3" />
                 </a>
               )}
-
               <a
                 href={work.id}
                 target="_blank"
@@ -170,22 +152,21 @@ export default function AuthorWorks() {
         ))}
       </div>
 
-      {/* Tabla completa solo en pantallas ≥ lg */}
+      {/* Tabla desktop */}
       <div className="hidden lg:block overflow-x-auto">
         <table className="w-full border-collapse">
-          <thead className="bg-gray-50 border-b border-gray-200">
+          <thead className="bg-gray-50 border-b border-gray-200 text-left text-sm text-gray-600 uppercase tracking-wider">
             <tr>
-              <th className="px-6 py-3 text-left text-gray-700">Título</th>
-              <th className="px-6 py-3 text-left text-gray-700">Año</th>
-              <th className="px-6 py-3 text-left text-gray-700">Tipo</th>
-              <th className="px-6 py-3 text-left text-gray-700">Citas</th>
-              <th className="px-6 py-3 text-left text-gray-700">Enlaces</th>
+              <th className="px-6 py-3">Título</th>
+              <th className="px-6 py-3">Año</th>
+              <th className="px-6 py-3">Tipo</th>
+              <th className="px-6 py-3">Citas</th>
+              <th className="px-6 py-3">Enlaces</th>
             </tr>
           </thead>
-
           <tbody className="divide-y divide-gray-200">
             {currentWorks.map((work) => (
-              <tr key={work.id} className="hover:bg-gray-50 transition-colors">
+              <tr key={work.id} className="hover:bg-gray-50 transition-all duration-150">
                 <td className="px-6 py-4 w-full break-words">
                   {work.title || work.display_name}
                   {work.is_retracted && (
@@ -194,39 +175,24 @@ export default function AuthorWorks() {
                     </span>
                   )}
                 </td>
-
                 <td className="px-6 py-4">{work.publication_year}</td>
-
                 <td className="px-6 py-4">
-                  <span
-                    className={`px-2 py-1 rounded text-sm ${getWorkTypeColor(
-                      work.type
-                    )}`}
-                  >
+                  <span className={`px-2 py-1 rounded-full text-sm font-semibold ${getWorkTypeColor(work.type)}`}>
                     {work.type}
                   </span>
                 </td>
-
-                <td className="px-6 py-4">
-                  {work.cited_by_count.toLocaleString()}
-                </td>
-
+                <td className="px-6 py-4">{work.cited_by_count.toLocaleString()}</td>
                 <td className="px-6 py-4">
                   <div className="flex flex-col gap-1">
                     {work.doi && (
                       <a
-                        href={
-                          work.doi.startsWith("http")
-                            ? work.doi
-                            : `https://doi.org/${work.doi}`
-                        }
+                        href={work.doi.startsWith("http") ? work.doi : `https://doi.org/${work.doi}`}
                         target="_blank"
                         className="text-teal-600 hover:text-teal-700 text-sm inline-flex items-center gap-1"
                       >
                         DOI <ExternalLink className="w-3 h-3" />
                       </a>
                     )}
-
                     <a
                       href={work.id}
                       target="_blank"
@@ -244,7 +210,6 @@ export default function AuthorWorks() {
 
       {/* Pagination */}
       <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between gap-2">
-        {/* Prev */}
         <button
           onClick={handlePrev}
           disabled={currentPage === 1}
@@ -254,17 +219,13 @@ export default function AuthorWorks() {
           <span className="hidden sm:inline">Anterior</span>
         </button>
 
-        {/* Middle: compact on mobile, full page buttons on sm+ */}
         <div className="flex-1 flex justify-center">
-          {/* Mobile compact: show "Página X de Y" */}
           <div className="flex items-center gap-2 sm:hidden text-xs text-gray-600">
             <span>Página</span>
             <span className="font-semibold">{currentPage}</span>
             <span>de</span>
             <span className="font-semibold">{totalPages}</span>
           </div>
-
-          {/* Desktop/tablet: full numbered pagination */}
           <div className="hidden sm:flex items-center gap-2">
             <div className="flex items-center gap-1 overflow-x-auto no-scrollbar px-1">
               {getPageNumbers().map((page, i) =>
@@ -273,24 +234,19 @@ export default function AuthorWorks() {
                     key={i}
                     onClick={() => handlePageClick(page)}
                     className={`w-9 h-9 sm:w-10 sm:h-10 rounded-lg text-sm flex items-center justify-center transition-colors ${
-                      currentPage === page
-                        ? "bg-teal-500 text-white"
-                        : "hover:bg-gray-100 text-gray-700"
+                      currentPage === page ? "bg-teal-500 text-white" : "hover:bg-gray-100 text-gray-700"
                     }`}
                   >
                     {page}
                   </button>
                 ) : (
-                  <span key={i} className="px-2 text-gray-500">
-                    ...
-                  </span>
+                  <span key={i} className="px-2 text-gray-500">...</span>
                 )
               )}
             </div>
           </div>
         </div>
 
-        {/* Next */}
         <button
           onClick={handleNext}
           disabled={currentPage === totalPages}

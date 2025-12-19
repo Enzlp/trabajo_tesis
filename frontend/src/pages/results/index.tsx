@@ -1,12 +1,9 @@
 import { useLocation } from "react-router-dom";
 import RecommendedCard from "./RecommendedCard";
 import FilterCard from "./FilterCard";
-import StatsCard from './StatsCard';
 import { useEffect, useState } from "react";
 import MetricsCard from "./MetricsCard";
-
-// Importar SVG como URL (evita errores de React con SVG complejos)
-import InfoCircle from "../../assets/info-circle.svg?url";
+import { Info, TrendingUp, ChevronRight, Globe } from "lucide-react";
 
 interface Concept {
   id: string;
@@ -50,22 +47,15 @@ export default function Results() {
   const [currentCountry, setCurrentCountry] = useState<string>("");
 
   // Estados para tooltips
-  const [showInfo, setShowInfo] = useState(false);
   const [showInfoRec, setShowInfoRec] = useState(false);
-  const [showInfoFilter, setShowInfoFilter] = useState(false);
-
-  const infoMetrics =
-    "Este modelo combina un enfoque basado en contenido (afinidad temática) y un enfoque de filtrado colaborativo (red de coautoría). Los scores se normalizan y se combinan según los pesos que definas, permitiendo priorizar recomendaciones por interés o por red. Los pesos deben sumar 1.";
 
   const infoRecommendations =
     "Las recomendaciones se generan combinando afinidad temática, basada en los intereses que ingreses, y la red de colaboración del autor seleccionado. Dependiendo de tu elección, se usa uno de los modelos o un sistema híbrido, y los scores indican la relevancia de cada recomendación, normalizados para poder compararlas entre modelos.";
 
-  const infoFilter =
-    "Puedes ordenar y filtrar las recomendaciones según la similitud temática, el número de citas o el número de trabajos. También es posible filtrar por país y limitar la cantidad de resultados hasta 200. Estos filtros y el ordenamiento se aplican sobre el total de autores recomendados.";
-
   useEffect(() => {
     const cList: Concept[] = location.state?.conceptList || [];
     const aId: string = location.state?.authorId || "";
+
 
     setConceptList(cList);
     setAuthorId(aId);
@@ -172,85 +162,92 @@ export default function Results() {
     }
   };
 
-  return (
-    <div className="min-h-screen px-3 sm:px-6 md:px-8 py-2 flex flex-col m-2 sm:m-4">
-      <div className="flex flex-col lg:flex-row w-full gap-4">
-        {/* Columna izquierda - Recomendaciones */}
-        <div className="flex flex-col w-full lg:w-6/10">
-          <div className="flex items-center gap-2 relative mb-4">
-            <h1 className="text-xl sm:text-2xl font-bold">Investigadores recomendados</h1>
+return (
+  <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-teal-50 px-4 md:px-8 py-6">
+    <div className="max-w-7xl mx-auto">
+
+      {/* Search Summary Card */}
+      <div className="mb-6 bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
+          <span>Inicio</span>
+          <ChevronRight className="w-4 h-4" />
+          <span className="text-teal-600 font-medium">Resultados</span>
+        </div>
+
+        {/* Título */}
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
+          Investigadores Recomendados
+        </h1>
+
+        <p className="mb-4">Los investigadores se muestran con un porcentaje que indica su relevancia según tu búsqueda. Los scores combinan afinidad temática y conexiones en la red de colaboración regional, para que puedas identificar rápidamente los perfiles más relevantes.</p>
+
+        {/* Result count + info */}
+        <div className="flex items-center gap-2 text-gray-600 mb-6">
+          <TrendingUp className="w-5 h-5 text-teal-600" />
+          <p className="text-sm md:text-base">
+            Mostrando <span className="font-bold text-teal-700">{totalResult}</span> resultados
+          </p>
+          <div className="flex items-center gap-2 ml-4">
             <div
               onMouseEnter={() => setShowInfoRec(true)}
               onMouseLeave={() => setShowInfoRec(false)}
-              className="relative cursor-pointer"
+              className="relative"
             >
-              <img src={InfoCircle} alt="info" className="w-4 h-4 sm:w-5 sm:h-5" />
+              <button className="text-gray-400 hover:text-teal-600 transition-colors">
+                <Info className="w-5 h-5" />
+              </button>
               {showInfoRec && (
-                <div className="absolute z-20 w-64 sm:w-72 p-3 right-0 sm:left-6 top-6 sm:top-1/2 sm:-translate-y-1/2 bg-gray-800 text-white text-xs rounded-lg shadow-lg">
+                <div className="absolute z-20 w-72 p-3 left-6 top-1/2 -translate-y-1/2 bg-gray-900 text-white text-xs rounded-lg shadow-xl">
                   {infoRecommendations}
                 </div>
               )}
             </div>
           </div>
-          <RecommendedCard recs={recommendations} loading={loading} />
         </div>
 
-        {/* Columna derecha - Filtros y métricas */}
-        <div className="flex flex-col w-full lg:w-4/10">
-          <div className="flex flex-col">
-            <div className="flex items-center gap-2 relative mb-4">
-              <h1 className="text-xl sm:text-2xl font-bold">Filtros</h1>
-              <div
-                onMouseEnter={() => setShowInfoFilter(true)}
-                onMouseLeave={() => setShowInfoFilter(false)}
-                className="relative cursor-pointer"
-              >
-                <img src={InfoCircle} alt="info" className="w-4 h-4 sm:w-5 sm:h-5" />
-                {showInfoFilter && (
-                  <div className="absolute z-20 w-64 sm:w-72 p-3 right-0 sm:left-6 top-6 sm:top-1/2 sm:-translate-y-1/2 bg-gray-800 text-white text-xs rounded-lg shadow-lg">
-                    {infoFilter}
-                  </div>
-                )}
-              </div>
-            </div>
-            <FilterCard filterFunction={applyFilters} />
-          </div>
+      </div>
 
-          <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row gap-4">
-            {conceptList.length > 0 && authorId !== "" && (
-              <div className="flex flex-col w-full sm:w-6/10 lg:w-full xl:w-6/10">
-                <div className="flex items-center gap-2 relative">
-                  <h1 className="text-xl sm:text-2xl font-bold my-4">Ajuste de pesos del modelo</h1>
-                  <div
-                    onMouseEnter={() => setShowInfo(true)}
-                    onMouseLeave={() => setShowInfo(false)}
-                    className="relative cursor-pointer"
-                  >
-                    <img src={InfoCircle} alt="info" className="w-4 h-4 sm:w-5 sm:h-5" />
-                    {showInfo && (
-                      <div className="absolute z-20 w-64 sm:w-72 p-3 right-0 sm:left-6 top-6 sm:top-1/2 sm:-translate-y-1/2 bg-gray-800 text-white text-xs rounded-lg shadow-lg">
-                        {infoMetrics}
-                      </div>
-                    )}
-                  </div>
-                </div>
+		{/* Filters & Metrics above recommendations */}
+		<div className="mb-6 flex flex-col lg:flex-row gap-6 items-stretch">
 
-                <MetricsCard
-                  peso1={peso1}
-                  peso2={peso2}
-                  setPeso1={setPeso1}
-                  setPeso2={setPeso2}
-                  fetchFunction={weightedFetch}
-                />
-              </div>
-            )}
-            <div className="flex flex-col w-full sm:w-4/10 lg:w-full xl:w-4/10">
-              <h1 className="text-xl sm:text-2xl font-bold my-4">Resultados</h1>
-              <StatsCard totalResult={totalResult} />
-            </div>
-          </div>
+		{/* Left: Filters - ocupa 2/3 en lg */}
+		<div className="w-full lg:w-2/3">
+			<FilterCard filterFunction={applyFilters} />
+		</div>
+
+		{/* Right: Metrics - ocupa 1/3 en lg, solo si hay concepto y autor */}
+    {conceptList.length > 0 && authorId !== "" ? (
+      <div className="w-full lg:w-1/3">
+        <MetricsCard
+          peso1={peso1}
+          peso2={peso2}
+          setPeso1={setPeso1}
+          setPeso2={setPeso2}
+          fetchFunction={weightedFetch}
+        />
+      </div>
+    ) : (
+      // Aquí va lo que quieres renderizar cuando NO se cumpla la condición
+      <div className="rounded-2xl shadow-md border border-gray-100 w-full lg:w-1/3 flex bg-gradient-to-r from-teal-500 to-cyan-600">
+        <div className="p-6 flex items-center">
+          <p className="text-white">Usa la búsqueda híbrida para ajustar y ver los parámetros del modelo.</p>
+          <Globe className="w-50 h-50 text-white" />
         </div>
       </div>
+    )}
+
+
+		</div>
+
+
+
+      {/* Recommendations */}
+      <RecommendedCard recs={recommendations} loading={loading} />
+
     </div>
-  );
+  </div>
+);
+
 }
