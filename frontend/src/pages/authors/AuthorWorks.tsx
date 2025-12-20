@@ -1,7 +1,9 @@
+// AutorWorks.tsx
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import LoadingWorks from './LoadingWorks';
 import { ExternalLink, ChevronLeft, ChevronRight, BookOpen } from "lucide-react";
+
 
 interface Work {
   cited_by_count: number;
@@ -82,7 +84,7 @@ export default function AuthorWorks() {
 
   if (!allWorks.length) {
     return (
-      <div className="flex flex-col border-2 border-gray-300 rounded-xl p-6">
+      <div className="flex flex-col border-2 border-gray-300 rounded-xl p-4 sm:p-6">
         <p className="text-center text-gray-500">No hay trabajos disponibles.</p>
       </div>
     );
@@ -92,24 +94,23 @@ export default function AuthorWorks() {
     <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
 
       {/* Header */}
-      <div className="p-6 border-b border-gray-200 bg-gray-50 flex flex-col">
+      <div className="p-4 sm:p-6 border-b border-gray-200 bg-gray-50 flex flex-col">
         <div className="flex items-center gap-2 mb-2">
           <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-lg flex items-center justify-center">
             <BookOpen className="w-5 h-5 text-white" />
           </div>
-          <h2 className="text-xl font-semibold">Publicaciones Recientes</h2>
+          <h2 className="text-lg sm:text-xl font-semibold">Publicaciones Recientes</h2>
         </div>
-        <p className="text-gray-600 text-sm sm:text-base">
+        <p className="text-gray-600 text-xs sm:text-sm">
           Mostrando {startIndex + 1}-{Math.min(endIndex, allWorks.length)} de {allWorks.length} publicaciones
         </p>
       </div>
 
-
       {/* Cards móvil */}
-      <div className="block lg:hidden p-4 space-y-4">
+      <div className="block lg:hidden p-4 sm:p-6 space-y-4">
         {currentWorks.map((work) => (
-          <div key={work.id} className="border rounded-2xl p-4 bg-white shadow-md hover:shadow-lg transition-shadow">
-            <h3 className="font-semibold text-base mb-1 break-words">{work.title || work.display_name}</h3>
+          <div key={work.id} className="border rounded-2xl p-4 sm:p-5 bg-white shadow-md hover:shadow-lg transition-shadow w-full break-words">
+            <h3 className="font-semibold text-sm sm:text-base mb-1">{work.title || work.display_name}</h3>
 
             {work.is_retracted && (
               <span className="inline-block px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs mb-2">
@@ -117,9 +118,9 @@ export default function AuthorWorks() {
               </span>
             )}
 
-            <p className="text-sm text-gray-600"><strong>Año:</strong> {work.publication_year || "N/A"}</p>
+            <p className="text-xs sm:text-sm text-gray-600"><strong>Año:</strong> {work.publication_year || "N/A"}</p>
 
-            <p className="text-sm mt-1">
+            <p className="text-xs mt-1">
               <span
                 className={`inline-block px-2 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${getWorkTypeColor(work.type)}`}
               >
@@ -127,15 +128,14 @@ export default function AuthorWorks() {
               </span>
             </p>
 
+            <p className="text-xs sm:text-sm text-gray-700 mt-2"><strong>Citas:</strong> {work.cited_by_count.toLocaleString()}</p>
 
-            <p className="text-sm text-gray-700 mt-2"><strong>Citas:</strong> {work.cited_by_count.toLocaleString()}</p>
-
-            <div className="mt-3 flex flex-col gap-1">
+            <div className="mt-3 flex flex-col gap-1 text-xs sm:text-sm">
               {work.doi && (
                 <a
                   href={work.doi.startsWith("http") ? work.doi : `https://doi.org/${work.doi}`}
                   target="_blank"
-                  className="text-teal-600 hover:text-teal-700 text-sm inline-flex items-center gap-1"
+                  className="text-teal-600 hover:text-teal-700 inline-flex items-center gap-1"
                 >
                   DOI <ExternalLink className="w-3 h-3" />
                 </a>
@@ -143,7 +143,7 @@ export default function AuthorWorks() {
               <a
                 href={work.id}
                 target="_blank"
-                className="text-teal-600 hover:text-teal-700 text-sm inline-flex items-center gap-1"
+                className="text-teal-600 hover:text-teal-700 inline-flex items-center gap-1"
               >
                 OpenAlex <ExternalLink className="w-3 h-3" />
               </a>
@@ -154,7 +154,7 @@ export default function AuthorWorks() {
 
       {/* Tabla desktop */}
       <div className="hidden lg:block overflow-x-auto">
-        <table className="w-full border-collapse">
+        <table className="w-full border-collapse min-w-[700px]">
           <thead className="bg-gray-50 border-b border-gray-200 text-left text-sm text-gray-600 uppercase tracking-wider">
             <tr>
               <th className="px-6 py-3">Título</th>
@@ -168,7 +168,21 @@ export default function AuthorWorks() {
             {currentWorks.map((work) => (
               <tr key={work.id} className="hover:bg-gray-50 transition-all duration-150">
                 <td className="px-6 py-4 w-full break-words">
-                  {work.title || work.display_name}
+                  {work.title ? (
+                      <span
+                        dangerouslySetInnerHTML={{
+                          __html: work.title
+                            // Eliminar prefijos mml:
+                            .replace(/<mml:/g, '<')
+                            .replace(/<\/mml:/g, '</')
+                            // Eliminar atributos no soportados
+                            .replace(/xmlns:mml="[^"]*"/g, '')
+                            .replace(/altimg="[^"]*"/g, ''),
+                        }}
+                      />
+                    ) : (
+                      <span>{work.display_name}</span>
+                    )}
                   {work.is_retracted && (
                     <span className="ml-2 px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs">
                       Retractado
@@ -183,12 +197,12 @@ export default function AuthorWorks() {
                 </td>
                 <td className="px-6 py-4">{work.cited_by_count.toLocaleString()}</td>
                 <td className="px-6 py-4">
-                  <div className="flex flex-col gap-1">
+                  <div className="flex flex-col gap-1 text-sm">
                     {work.doi && (
                       <a
                         href={work.doi.startsWith("http") ? work.doi : `https://doi.org/${work.doi}`}
                         target="_blank"
-                        className="text-teal-600 hover:text-teal-700 text-sm inline-flex items-center gap-1"
+                        className="text-teal-600 hover:text-teal-700 inline-flex items-center gap-1"
                       >
                         DOI <ExternalLink className="w-3 h-3" />
                       </a>
@@ -196,7 +210,7 @@ export default function AuthorWorks() {
                     <a
                       href={work.id}
                       target="_blank"
-                      className="text-teal-600 hover:text-teal-700 text-sm inline-flex items-center gap-1"
+                      className="text-teal-600 hover:text-teal-700 inline-flex items-center gap-1"
                     >
                       OpenAlex <ExternalLink className="w-3 h-3" />
                     </a>
@@ -209,52 +223,51 @@ export default function AuthorWorks() {
       </div>
 
       {/* Pagination */}
-      <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between gap-2">
-        <button
-          onClick={handlePrev}
-          disabled={currentPage === 1}
-          className="inline-flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
-        >
-          <ChevronLeft className="w-4 h-4" />
-          <span className="hidden sm:inline">Anterior</span>
-        </button>
+      <div className="px-4 sm:px-6 py-3 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-4">
+        <div className="flex gap-2 w-full sm:w-auto justify-between sm:justify-start">
+          <button
+            onClick={handlePrev}
+            disabled={currentPage === 1}
+            className="inline-flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm flex-1 sm:flex-none justify-center"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            <span className="hidden sm:inline">Anterior</span>
+          </button>
+          <button
+            onClick={handleNext}
+            disabled={currentPage === totalPages}
+            className="inline-flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm flex-1 sm:flex-none justify-center"
+          >
+            <span className="hidden sm:inline">Siguiente</span>
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
 
-        <div className="flex-1 flex justify-center">
+        <div className="flex-1 flex justify-center sm:justify-end mt-2 sm:mt-0">
           <div className="flex items-center gap-2 sm:hidden text-xs text-gray-600">
             <span>Página</span>
             <span className="font-semibold">{currentPage}</span>
             <span>de</span>
             <span className="font-semibold">{totalPages}</span>
           </div>
-          <div className="hidden sm:flex items-center gap-2">
-            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar px-1">
-              {getPageNumbers().map((page, i) =>
-                typeof page === "number" ? (
-                  <button
-                    key={i}
-                    onClick={() => handlePageClick(page)}
-                    className={`w-9 h-9 sm:w-10 sm:h-10 rounded-lg text-sm flex items-center justify-center transition-colors ${
-                      currentPage === page ? "bg-teal-500 text-white" : "hover:bg-gray-100 text-gray-700"
-                    }`}
-                  >
-                    {page}
-                  </button>
-                ) : (
-                  <span key={i} className="px-2 text-gray-500">...</span>
-                )
-              )}
-            </div>
+          <div className="hidden sm:flex items-center gap-2 overflow-x-auto no-scrollbar px-1">
+            {getPageNumbers().map((page, i) =>
+              typeof page === "number" ? (
+                <button
+                  key={i}
+                  onClick={() => handlePageClick(page)}
+                  className={`w-9 h-9 sm:w-10 sm:h-10 rounded-lg text-sm flex items-center justify-center transition-colors ${
+                    currentPage === page ? "bg-teal-500 text-white" : "hover:bg-gray-100 text-gray-700"
+                  }`}
+                >
+                  {page}
+                </button>
+              ) : (
+                <span key={i} className="px-2 text-gray-500">...</span>
+              )
+            )}
           </div>
         </div>
-
-        <button
-          onClick={handleNext}
-          disabled={currentPage === totalPages}
-          className="inline-flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
-        >
-          <span className="hidden sm:inline">Siguiente</span>
-          <ChevronRight className="w-4 h-4" />
-        </button>
       </div>
 
     </div>

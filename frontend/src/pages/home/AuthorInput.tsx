@@ -167,10 +167,11 @@ function AuthorInput({ onChangeValue, value, displayName }: AuthorInputProps) {
         }}
         onKeyDown={handleKeyDown}
         className="
-          w-full pl-4 pr-4 py-3
+          w-full px-3 sm:px-4 py-2.5 sm:py-3
           border border-gray-300 rounded-lg
           focus:ring-2 focus:ring-teal-500
           outline-none
+          text-sm sm:text-base
         "
       />
 
@@ -179,16 +180,16 @@ function AuthorInput({ onChangeValue, value, displayName }: AuthorInputProps) {
           absolute top-full left-0 w-full
           bg-white border border-gray-300
           rounded-b-lg shadow-md mt-1
-          max-h-64 overflow-y-auto z-20
+          max-h-48 sm:max-h-64 overflow-y-auto z-20
         ">
           {loading && (
-            <li className="px-3 py-2 text-gray-400">
+            <li className="px-3 py-2 text-gray-400 text-sm sm:text-base">
               Buscando autores…
             </li>
           )}
 
           {!loading && results.length === 0 && (
-            <li className="px-3 py-2 text-gray-400">
+            <li className="px-3 py-2 text-gray-400 text-sm sm:text-base">
               Sin resultados
             </li>
           )}
@@ -198,7 +199,7 @@ function AuthorInput({ onChangeValue, value, displayName }: AuthorInputProps) {
               <li
                 key={item.author_id}
                 ref={(el) => {itemRefs.current[index] = el}}
-                className={`px-3 py-2 cursor-pointer ${
+                className={`px-3 py-2 cursor-pointer text-sm sm:text-base ${
                   index === highlightedIndex
                     ? "bg-teal-100"
                     : "hover:bg-gray-100"
