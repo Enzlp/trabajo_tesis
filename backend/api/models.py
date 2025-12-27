@@ -762,6 +762,15 @@ class MvIaCoauthorshipLatam(models.Model):
 		managed= False
 		db_table = 'mv_ia_coauthorships_latam'
 
+class MvIaCoauthorship(models.Model):
+	coauthor_1 = models.CharField()
+	coauthor_2 = models.CharField()
+	shared_works = models.IntegerField()
+
+	class Meta: 
+		managed= False
+		db_table = 'mv_ia_coauthorships'
+
 
 class MvRecommendationAuthorPool(models.Model):
 	author_id = models.CharField(primary_key=True)

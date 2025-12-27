@@ -1,4 +1,4 @@
-# Contenido de recommender/collaborative_filtering/queries.py (Modificado)
+# Contenido de recommender/matrix_factorization/queries.py (Modificado)
 
 import numpy as np
 import os

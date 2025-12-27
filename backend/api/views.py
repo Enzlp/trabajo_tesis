@@ -44,36 +44,53 @@ class InstitutionViewSet(viewsets.ReadOnlyModelViewSet):
 class AuthorWorksView(APIView):
     def get(self, request, author_id: str):
         limit = int(request.query_params.get("limit", 100))
+        concept_id = request.query_params.get("concept_id", None)
+        
         if limit <= 0:
-            return Response({
-                "results": [],
-                "count": 0,
-            })
+            return Response({"results": [], "count": 0})
+        
+        # Normalizar author_id
+        if not author_id.startswith('https://'):
+            author_id = f'https://openalex.org/{author_id}'
         
         try:
-            author_obj = Author.objects.get(id__endswith=author_id)
+            author_obj = Author.objects.get(id=author_id)
         except Author.DoesNotExist:
-            return Response({
-                "results": [],
-                "count": 0,
-            })
-
-        work_ids = Work.objects.filter(
+            return Response({"results": [], "count": 0})
+        
+        # Query base
+        base_qs = Work.objects.filter(
             authorships__author=author_obj
-        ).values_list('id', flat=True).distinct()
+        )
         
-        works_qs = Work.objects.filter(
-            id__in=list(work_ids)
-        ).order_by("-publication_date", "-id")[:limit]
+        if concept_id:
+            if not concept_id.startswith('https://'):
+                concept_id = f'https://openalex.org/{concept_id}'
+            
+            base_qs = base_qs.filter(
+                work_concepts__concept__id=concept_id
+            )
         
-
-        works_list = list(works_qs)
+        # SOLUCIÓN: Deduplicar solo por ID, luego ordenar
+        dedup_ids = (
+            base_qs
+            .order_by("id", "-publication_date")
+            .distinct("id")
+            .values("id")
+        )
         
-        serializer = WorkSerializer(works_list, many=True)
+        # Ordenamiento real
+        works_qs = (
+            Work.objects
+            .filter(id__in=dedup_ids)
+            .order_by("-publication_date", "-id")[:limit]
+        )
+        
+        serializer = WorkSerializer(works_qs, many=True)
         
         return Response({
             "results": serializer.data,
-            "count": len(works_list),
+            "count": works_qs.count() if works_qs else 0,
         })
     
 # Views autocompletado
@@ -156,11 +173,11 @@ class RecommendationViewSet(APIView):
     API endpoint para obtener recomendaciones de autores
     basadas en conceptos de interés del usuario.
     """
-    
+
     def post(self, request):
         input_serializer = GetRecommendationsRequestSerializer(data=request.data)
         input_serializer.is_valid(raise_exception=True)
-        
+
         validated_data = input_serializer.validated_data
         concept_vector = validated_data.get('concept_vector')
         author_id = validated_data.get('author_id')
@@ -170,16 +187,27 @@ class RecommendationViewSet(APIView):
         country_code = validated_data.get('country_code', '')
         order_by = validated_data.get('order_by', 'sim')
 
-        # Inicializar el caché para obtener el mapeo de conceptos y el vector IDF
+        # Inicializar cache CB
         ContentBasedQueries._initialize_cache()
         concept_to_index = ContentBasedQueries._cache['concept_to_index']
-        idf_vector = ContentBasedQueries._cache['idf_vector']
 
-        # Si hay filtro por país, traer más candidatos primero
+        # -------------------------
+        # IDs semánticos relevantes
+        # -------------------------
+        AI_ID = "https://openalex.org/C154945302"
+        DATA_SCIENCE_ID = "https://openalex.org/C2522767166"
+        DATA_MINING_ID = "https://openalex.org/C124101348"
+
+        SPECIFIC_SUBFIELDS = {
+            "https://openalex.org/C204321447",  # NLP
+            "https://openalex.org/C31972630",   # Computer Vision
+            "https://openalex.org/C28490314",   # Speech Recognition
+        }
+
+        # Si hay filtro por país, traemos más candidatos primero
         candidate_limit = 20000 if country_code else limit
-        
-        # HybridRecommender devuelve:
-        # (aid, hybrid_score, cb_score, cf_score)
+
+        # Recomendaciones híbridas
         recommendations = HybridRecommender().get_recommendations(
             user_input=concept_vector,
             author_id=author_id,
@@ -187,19 +215,23 @@ class RecommendationViewSet(APIView):
             beta=beta,
             k=candidate_limit
         )
-        
+
         if not recommendations:
             response_data = {'total_recommendations': 0, 'recommendations': []}
-            output_serializer = RecommendationListSerializer(response_data)
-            return Response(output_serializer.data, status=status.HTTP_200_OK)
+            return Response(
+                RecommendationListSerializer(response_data).data,
+                status=status.HTTP_200_OK
+            )
 
-        # Extraer ids y diccionarios de scores
+        # Extraer scores
         top_author_ids = [aid for aid, _, _, _ in recommendations]
-        hybrid_scores_dict = {aid: score for aid, score, _, _ in recommendations}
+        hybrid_scores_dict = {aid: s for aid, s, _, _ in recommendations}
         cb_scores_dict = {aid: cb for aid, _, cb, _ in recommendations}
         cf_scores_dict = {aid: cf for aid, _, _, cf in recommendations}
 
+        # -------------------------
         # FILTRO POR PAÍS
+        # -------------------------
         if country_code:
             valid_author_ids = set(
                 MvLatamAuthor.objects.filter(
@@ -209,28 +241,39 @@ class RecommendationViewSet(APIView):
             )
 
             recommendations = [
-                (aid, hybrid_score, cb_score, cf_score)
-                for aid, hybrid_score, cb_score, cf_score in recommendations
+                (aid, s, cb, cf)
+                for aid, s, cb, cf in recommendations
                 if aid in valid_author_ids
             ]
 
             if not recommendations:
                 response_data = {'total_recommendations': 0, 'recommendations': []}
-                output_serializer = RecommendationListSerializer(response_data)
-                return Response(output_serializer.data, status=status.HTTP_200_OK)
+                return Response(
+                    RecommendationListSerializer(response_data).data,
+                    status=status.HTTP_200_OK
+                )
 
-        # Actualizar IDs tras filtrado
+        # Actualizar ids
         top_author_ids = [aid for aid, _, _, _ in recommendations]
 
-        # Query autores
+        # -------------------------
+        # QUERY AUTORES
+        # -------------------------
         authors_dict = MvLatamAuthor.objects.filter(
             id__in=top_author_ids
         ).only(
-            'id','orcid','display_name','works_count','cited_by_count',
-            'country_code','institution_name'
+            'id',
+            'orcid',
+            'display_name',
+            'works_count',
+            'cited_by_count',
+            'country_code',
+            'institution_name'
         ).in_bulk()
 
+        # -------------------------
         # ORDENAMIENTO
+        # -------------------------
         if order_by == 'works':
             recommendations = sorted(
                 recommendations,
@@ -249,16 +292,15 @@ class RecommendationViewSet(APIView):
                 )
             )
 
-        # Aplicar límite final
+        # Límite final
         recommendations = recommendations[:limit]
 
-        # Regenerar diccionarios finales
+        # Recalcular ids finales
         top_author_ids = [aid for aid, _, _, _ in recommendations]
-        hybrid_scores_dict = {aid: s for aid, s, _, _ in recommendations}
-        cb_scores_dict = {aid: cb for aid, _, cb, _ in recommendations}
-        cf_scores_dict = {aid: cf for aid, _, _, cf in recommendations}
 
-        # Query conceptos top-3 por autor (TF-IDF sublineal)
+        # =========================================================
+        # 🔥 TOP CONCEPTS (UI) — TF NORMALIZADO + FILTRO SEMÁNTICO
+        # =========================================================
         concept_rows = MvLatamIaAuthorConcept.objects.filter(
             author_id__in=top_author_ids
         )
@@ -267,33 +309,60 @@ class RecommendationViewSet(APIView):
         top_concepts_temp = {}
 
         for row in concept_rows:
+            concept_ids = row.concept_ids or []
+            concept_tfs = row.concept_tfs or []
 
-            raw_pairs = zip(row.concept_ids, row.concept_tfs)
+            total_tf = sum(concept_tfs)
+            if total_tf == 0:
+                continue
 
-            tfidf_scores = []
+            tf_norm_scores = []
 
-            for concept_id, raw_tf in raw_pairs:
+            for concept_id, raw_tf in zip(concept_ids, concept_tfs):
+
+                # Solo conceptos del pool IA
                 if concept_id not in concept_to_index:
                     continue
 
-                concept_idx = concept_to_index[concept_id]
+                # Excluir siempre IA y Data Science
+                if concept_id == AI_ID or concept_id == DATA_SCIENCE_ID:
+                    continue
 
-                tf_value = float(raw_tf)
-                tf_sub = 1 + math.log(tf_value) if tf_value > 0 else 0
+                tf_norm = raw_tf / total_tf
+                if tf_norm > 0:
+                    tf_norm_scores.append((concept_id, tf_norm))
 
-                idf_w = idf_vector[concept_idx]
-                tfidf_score = tf_sub * idf_w
+            if not tf_norm_scores:
+                continue
 
-                if tfidf_score > 0:
-                    tfidf_scores.append((concept_id, tfidf_score))
+            # Orden preliminar
+            tf_norm_scores.sort(key=lambda x: x[1], reverse=True)
 
-            pairs = sorted(tfidf_scores, key=lambda x: x[1], reverse=True)[:3]
-            top_concepts_temp[row.author_id] = pairs
+            # Detectar si hay sublíneas específicas
+            has_specific = any(
+                cid in SPECIFIC_SUBFIELDS
+                for cid, _ in tf_norm_scores
+            )
 
-            for cid, _ in pairs:
+            final_pairs = []
+            for cid, score in tf_norm_scores:
+                # Data Mining solo si no hay sublíneas más específicas
+                if cid == DATA_MINING_ID and has_specific:
+                    continue
+                final_pairs.append((cid, score))
+                if len(final_pairs) == 3:
+                    break
+
+            top_concepts_temp[row.author_id] = final_pairs
+
+            for cid, _ in final_pairs:
                 all_concept_ids.add(cid)
 
-        concept_objects = Concept.objects.filter(id__in=all_concept_ids).only("id", "display_name")
+        # Resolver nombres
+        concept_objects = Concept.objects.filter(
+            id__in=all_concept_ids
+        ).only("id", "display_name")
+
         concept_name_map = {c.id: c.display_name for c in concept_objects}
 
         concepts_dict = {}
@@ -307,33 +376,38 @@ class RecommendationViewSet(APIView):
                 for cid, score in pairs
             ]
 
-        # Construcción final del payload
+        # -------------------------
+        # PAYLOAD FINAL
+        # -------------------------
         author_data = []
         for aid in top_author_ids:
             author = authors_dict.get(aid)
-            if author:
-                author_data.append({
-                    "author_id": aid,
-                    "orcid": author.orcid,
-                    "display_name": author.display_name,
-                    "country_code": author.country_code,
-                    "institution_name": author.institution_name,
-                    "similarity_score": float(hybrid_scores_dict[aid]),  # Score híbrido
-                    "cb_score": float(cb_scores_dict[aid]),              # Score del content-based
-                    "cf_score": float(cf_scores_dict[aid]),              # Score del collaborative filtering
-                    "works_count": author.works_count or 0,
-                    "cited_by_count": author.cited_by_count or 0,
-                    "top_concepts": concepts_dict.get(aid, [])
-                })
+            if not author:
+                continue
+
+            author_data.append({
+                "author_id": aid,
+                "orcid": author.orcid,
+                "display_name": author.display_name,
+                "country_code": author.country_code,
+                "institution_name": author.institution_name,
+                "similarity_score": float(hybrid_scores_dict[aid]),
+                "cb_score": float(cb_scores_dict[aid]),
+                "cf_score": float(cf_scores_dict[aid]),
+                "works_count": author.works_count or 0,
+                "cited_by_count": author.cited_by_count or 0,
+                "top_concepts": concepts_dict.get(aid, [])
+            })
 
         response_data = {
-            'total_recommendations': len(recommendations),
-            'recommendations': author_data
+            "total_recommendations": len(author_data),
+            "recommendations": author_data
         }
 
-        output_serializer = RecommendationListSerializer(response_data)
-        return Response(output_serializer.data, status=status.HTTP_200_OK)
-
+        return Response(
+            RecommendationListSerializer(response_data).data,
+            status=status.HTTP_200_OK
+        )
 
 class AuthorConceptsView(APIView):
     """

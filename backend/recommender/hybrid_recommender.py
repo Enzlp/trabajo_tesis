@@ -1,7 +1,7 @@
 # Contenido de recommender/hybrid_recommender.py (Modificado)
 
 from recommender.content_based.queries import ContentBasedQueries
-from recommender.collaborative_filtering.queries import CollaborativeFilteringQueries
+from recommender.matrix_factorization.queries import CollaborativeFilteringQueries
 
 class HybridRecommender:
     @staticmethod

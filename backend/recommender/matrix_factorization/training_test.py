@@ -8,7 +8,7 @@ import pickle
 import time
 import numpy as np
 import pandas as pd
-from scipy.sparse import csr_matrix, vstack, save_npz, lil_matrix
+from scipy.sparse import csr_matrix, save_npz, lil_matrix, load_npz
 from implicit.als import AlternatingLeastSquares
 from api.models import MvIaCoauthorshipLatam
 
@@ -401,7 +401,19 @@ def run_full_recommendation_system(
     print("============================================================")
 
     # 1) Carga
-    df_pairs_unique, author_to_idx, author_list = get_author_map_and_ratings(save_dir)
+    #df_pairs_unique, author_to_idx, author_list = get_author_map_and_ratings(save_dir)
+    author_to_idx = np.load(f"{save_dir}/cf_author_to_idx.npy", allow_pickle=True).item()
+    author_list = [a for a, _ in sorted(author_to_idx.items(), key=lambda x: x[1])]
+    from scipy.sparse import load_npz
+    R = load_npz(f"{save_dir}/cf_rating_matrix.npz").tocoo()
+    df_pairs_unique = pd.DataFrame({
+        "coauthor_1": [author_list[i] for i, j in zip(R.row, R.col) if i < j],
+        "coauthor_2": [author_list[j] for i, j in zip(R.row, R.col) if i < j],
+        "count":      [float(c)      for i, j, c in zip(R.row, R.col, R.data) if i < j],
+    })
+    df_pairs_unique["pair_min"] = df_pairs_unique[["coauthor_1","coauthor_2"]].min(axis=1)
+    df_pairs_unique["pair_max"] = df_pairs_unique[["coauthor_1","coauthor_2"]].max(axis=1)
+
 
     # 2) split train/val/test
     df_train_unique, df_val_unique, df_test_unique = train_val_test_split(df_pairs_unique, seed=random_state)
@@ -564,5 +576,53 @@ def run_full_recommendation_system(
     return summary
 
 # -------------------------------
-# End of file
+# Evaluacion final
 # -------------------------------
+
+def evaluate_final_full(U, save_dir, K=10, random_state=42):
+    """
+    Evalúa Recall@K y NDCG@K sobre TODO el conjunto de usuarios con interacciones en TEST,
+    reconstruyendo R_train+val y R_test desde los archivos guardados en save_dir.
+    
+    Args:
+        U: Embeddings finales (numpy array)
+        save_dir: Directorio donde están guardados cf_rating_matrix.npz y cf_author_to_idx.npy
+        K: Top-K para evaluación
+    """
+
+    # 1️⃣ Cargar autor_to_idx y matriz completa
+    author_to_idx = np.load(f"{save_dir}/cf_author_to_idx.npy", allow_pickle=True).item()
+    author_list = [a for a, _ in sorted(author_to_idx.items(), key=lambda x: x[1])]
+    R_full = load_npz(f"{save_dir}/cf_rating_matrix.npz").tocoo()
+
+    # 2️⃣ Reconstruir df_pairs_unique
+    df_pairs_unique = pd.DataFrame({
+        "coauthor_1": [author_list[i] for i, j in zip(R_full.row, R_full.col) if i < j],
+        "coauthor_2": [author_list[j] for i, j in zip(R_full.row, R_full.col) if i < j],
+        "count":      [float(c)      for i, j, c in zip(R_full.row, R_full.col, R_full.data) if i < j],
+    })
+    df_pairs_unique["pair_min"] = df_pairs_unique[["coauthor_1","coauthor_2"]].min(axis=1)
+    df_pairs_unique["pair_max"] = df_pairs_unique[["coauthor_1","coauthor_2"]].max(axis=1)
+
+    # 3️⃣ Split Train/Val/Test
+    df_train_unique, df_val_unique, df_test_unique = train_val_test_split(df_pairs_unique, seed=random_state)
+
+    # 4️⃣ Construir simétricos y mapear a matrices CSR
+    R_train = map_indices_and_build(build_symmetric(df_train_unique), author_to_idx).tocsr()
+    R_val   = map_indices_and_build(build_symmetric(df_val_unique), author_to_idx).tocsr()
+    R_test  = map_indices_and_build(build_symmetric(df_test_unique), author_to_idx).tocsr()
+
+    R_train_plus_val = R_train + R_val
+
+    # 5️⃣ Evaluar
+    test_users = np.where(R_test.getnnz(axis=1) > 0)[0]
+    print(f"✔ Evaluando en {len(test_users):,} usuarios (todos los de R_test)")
+
+    recall, ndcg, n_eval = recall_ndcg_at_k_sample_U(U, R_train_plus_val, R_test, test_users, K=K)
+
+    print(f"\n→ Recall@{K} (FULL): {recall:.6f}")
+    print(f"→ NDCG@{K} (FULL): {ndcg:.6f}")
+    print(f"→ Usuarios evaluados: {n_eval:,}")
+
+    return recall, ndcg
+
