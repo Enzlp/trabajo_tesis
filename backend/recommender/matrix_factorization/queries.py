@@ -4,7 +4,7 @@ import numpy as np
 import os
 
 
-class CollaborativeFilteringQueries:
+class MFQueries:
     # Cache estático a nivel de clase
     _cache = None
     

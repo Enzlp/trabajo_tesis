@@ -1,7 +1,8 @@
 # Contenido de recommender/hybrid_recommender.py (Modificado)
 
 from recommender.content_based.queries import ContentBasedQueries
-from recommender.matrix_factorization.queries import CollaborativeFilteringQueries
+from recommender.matrix_factorization.queries import MFQueries
+from recommender.ItemKNN.queries import ItemKNNQueries
 
 class HybridRecommender:
     @staticmethod
@@ -10,13 +11,11 @@ class HybridRecommender:
         author_id=None,
         k=30,
         alpha=0.5,
-        beta=0.5,
-        order_by='sim',
-        country_code=''
+        beta=0.5
     ):
         # Referencias directas a las clases (NO instancias)
         content = ContentBasedQueries
-        colab = CollaborativeFilteringQueries
+        colab = ItemKNNQueries
 
         # -----------------------------------------------------
         # SOLO CONTENT-BASED
